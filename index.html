@@ -40,6 +40,44 @@
             color: #d1d5db; /* Light gray text */
             background-color: #111827; /* Dark background */
         }
+        /* Custom styles for the toggle switch */
+        .toggle-switch-container {
+            display: inline-block;
+            height: 24px;
+            position: relative;
+            width: 48px;
+        }
+        .toggle-switch-container input {
+            display: none;
+        }
+        .toggle-slider {
+            background-color: #4b5563; /* Gray background */
+            bottom: 0;
+            cursor: pointer;
+            left: 0;
+            position: absolute;
+            right: 0;
+            top: 0;
+            transition: .4s;
+            border-radius: 34px;
+        }
+        .toggle-slider:before {
+            background-color: white;
+            bottom: 4px;
+            content: "";
+            height: 16px;
+            left: 4px;
+            position: absolute;
+            transition: .4s;
+            width: 16px;
+            border-radius: 50%;
+        }
+        input:checked + .toggle-slider {
+            background-color: #22c55e; /* Green background */
+        }
+        input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center justify-center min-h-screen p-4">
@@ -64,7 +102,16 @@ total"
         </div>
         <!-- Right Panel: Output Area -->
         <div class="flex-1 flex flex-col p-6 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30">
-            <h2 class="text-2xl font-bold text-white mb-6">Results</h2>
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-white">Results</h2>
+                <div class="flex items-center space-x-2">
+                    <label class="text-gray-400">No sleep mode</label>
+                    <label class="toggle-switch-container">
+                        <input type="checkbox" id="noSleepToggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
             <div id="outputArea" class="relative flex-1 bg-gray-900 rounded-xl p-6 overflow-y-auto text-gray-200 font-mono text-lg leading-relaxed">
                 <div class="text-gray-400">Your results will appear here in real-time.</div>
             </div>
@@ -120,6 +167,10 @@ total"
         const messageBox = document.getElementById('message-box');
         const messageText = document.getElementById('message-text');
 
+        // References for the new no-sleep mode
+        const noSleepToggle = document.getElementById('noSleepToggle');
+        let wakeLock = null; // A sentinel to hold the wake lock
+        
         // Global object to store user-defined variables
         let variables = {};
         
@@ -369,6 +420,56 @@ total"
             outputArea.innerHTML = outputHTML || '<div class="text-gray-400">Your results will appear here in real-time.</div>';
         };
 
+        // --- Wake Lock Functionality ---
+
+        /**
+         * Attempts to request a screen wake lock.
+         */
+        const requestWakeLock = async () => {
+            if ('wakeLock' in navigator) {
+                if (wakeLock !== null) {
+                    // Already have a lock, no need to request again
+                    return;
+                }
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Wake lock was released');
+                        wakeLock = null; // Reset the sentinel
+                        if (noSleepToggle.checked) {
+                            noSleepToggle.checked = false; // Sync the toggle
+                            showMessage('Screen wake lock was released.');
+                        }
+                    });
+                    showMessage('Screen wake lock is active.');
+                } catch (err) {
+                    // This is the added error handling
+                    console.error(`${err.name}, ${err.message}`);
+                    if (err.name === 'NotAllowedError') {
+                        showMessage('Failed to enable "No sleep mode". This feature may be blocked by your browser\'s security policy.');
+                    } else {
+                        showMessage(`Error: Could not activate "No sleep mode". Reason: ${err.message}`);
+                    }
+                    noSleepToggle.checked = false; // Turn the toggle off if it fails
+                }
+            } else {
+                 showMessage('Wake Lock API not supported in this browser.');
+                 noSleepToggle.checked = false; // Turn the toggle off
+            }
+        };
+
+        /**
+         * Releases the screen wake lock.
+         */
+        const releaseWakeLock = () => {
+            if (wakeLock !== null) {
+                wakeLock.release().then(() => {
+                    wakeLock = null;
+                    showMessage('Screen wake lock is released.');
+                });
+            }
+        };
+
         // --- Event Listeners ---
 
         // Event listener for real-time processing as the user types
@@ -428,6 +529,22 @@ total"
             });
         });
 
+        // Event listener for the new no-sleep toggle
+        noSleepToggle.addEventListener('change', () => {
+            if (noSleepToggle.checked) {
+                requestWakeLock();
+            } else {
+                releaseWakeLock();
+            }
+        });
+
+        // Re-request wake lock if the page becomes visible and the toggle is still on
+        document.addEventListener('visibilitychange', () => {
+            if (wakeLock !== null && document.visibilityState === 'visible' && noSleepToggle.checked) {
+                requestWakeLock();
+            }
+        });
+
         // Initial processing on page load
         window.addEventListener('DOMContentLoaded', () => {
              // Set a default value and trigger the initial calculation
@@ -448,6 +565,7 @@ today + 2 years
 9:30 AM + 30 minutes
 
 // Use the buttons at the bottom of the page to save and load your work.
+// Use the new "No sleep mode" toggle to prevent your screen from sleeping.
 
 // Percentage calculations
 340 + 15%

@@ -42,7 +42,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200 antialiased flex items-center justify-center min-h-screen p-4">
+<body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center justify-center min-h-screen p-4">
     <div class="w-full max-w-4xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[80vh]">
         <!-- Left Panel: Input Area -->
         <div class="flex-1 flex flex-col p-6 md:p-8">
@@ -50,7 +50,7 @@
                 <h1 class="text-3xl font-bold text-white">Insta-Clone</h1>
                 <button id="eraseButton" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg shadow-lg hover:bg-red-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50">Erase</button>
             </div>
-            <p class="text-gray-400 mb-6">Type your calculations below. Define variables like `x = 10` and use them in subsequent lines.</p>
+            
             <div class="relative flex-1">
                 <textarea
                     id="inputArea"
@@ -71,6 +71,38 @@ total"
         </div>
     </div>
 
+    <!-- Saved Calculations Section, now at the very bottom -->
+    <div class="w-full max-w-4xl mt-8 p-6 md:p-8 bg-gray-800 rounded-2xl shadow-2xl">
+        <h3 class="text-lg font-semibold text-white mb-2">Saved Calculations (3 slots)</h3>
+        <div id="save-buttons" class="grid grid-cols-3 gap-2">
+            <button id="save-1" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors duration-200">Save 1</button>
+            <button id="save-2" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors duration-200">Save 2</button>
+            <button id="save-3" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors duration-200">Save 3</button>
+        </div>
+        <div id="load-buttons" class="grid grid-cols-3 gap-2 mt-2">
+            <button id="load-1" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200">Load 1</button>
+            <button id="load-2" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200">Load 2</button>
+            <button id="load-3" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200">Load 3</button>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal (hidden by default) -->
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70">
+        <div class="bg-gray-800 rounded-xl p-6 w-96 shadow-2xl border border-gray-700">
+            <h4 class="text-xl font-bold mb-4">Overwrite Calculation?</h4>
+            <p id="confirm-message" class="text-gray-400 mb-6">This slot already has a saved calculation. Do you want to replace it?</p>
+            <div class="flex justify-end gap-4">
+                <button id="confirm-cancel" class="bg-gray-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-gray-700">Cancel</button>
+                <button id="confirm-ok" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-700">Overwrite</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Message Box (hidden by default) -->
+    <div id="message-box" class="fixed bottom-4 left-1/2 -translate-x-1/2 p-4 bg-gray-800 text-white rounded-lg shadow-lg z-50 hidden opacity-0 transition-opacity duration-300">
+        <p id="message-text"></p>
+    </div>
+
     <script>
         // --- Core Application Logic ---
         
@@ -78,6 +110,15 @@ total"
         const inputArea = document.getElementById('inputArea');
         const outputArea = document.getElementById('outputArea');
         const eraseButton = document.getElementById('eraseButton');
+
+        // References for the new save/load functionality
+        const saveButtons = document.querySelectorAll('#save-buttons button');
+        const loadButtons = document.querySelectorAll('#load-buttons button');
+        const confirmModal = document.getElementById('confirm-modal');
+        const confirmOk = document.getElementById('confirm-ok');
+        const confirmCancel = document.getElementById('confirm-cancel');
+        const messageBox = document.getElementById('message-box');
+        const messageText = document.getElementById('message-text');
 
         // Global object to store user-defined variables
         let variables = {};
@@ -98,6 +139,26 @@ total"
             lb: { kg: 0.453592 },
         };
         
+        // --- Helper Functions ---
+
+        /**
+         * Shows a temporary message box with a given text.
+         * @param {string} text The message to display.
+         */
+        const showMessage = (text) => {
+            messageText.textContent = text;
+            messageBox.classList.remove('hidden');
+            setTimeout(() => {
+                messageBox.classList.remove('opacity-0');
+            }, 10);
+            setTimeout(() => {
+                messageBox.classList.add('opacity-0');
+                setTimeout(() => {
+                    messageBox.classList.add('hidden');
+                }, 300);
+            }, 3000);
+        };
+
         /**
          * Parses and evaluates a single line of input.
          * @param {string} line The single line of text to evaluate.
@@ -106,8 +167,8 @@ total"
         const evaluateLine = (line) => {
             line = line.trim();
             if (!line) return null; // Skip empty lines
-            
-            // Check for variable assignment (e.g., `variable = value`)
+
+            // First, check for variable assignment (e.g., `variable = value`)
             const assignmentMatch = line.match(/^([a-zA-Z_]\w*)\s*=\s*(.*)$/);
             if (assignmentMatch) {
                 const varName = assignmentMatch[1];
@@ -123,7 +184,70 @@ total"
                 }
             }
 
-            // If it's not an assignment, try to evaluate it as a direct expression
+            // Next, check for date calculation pattern (e.g., "today + 90 days" or "today + y days")
+            const dateMatch = line.match(/^today\s*([+\-])\s*([a-zA-Z_]\w*|\d+)\s*(days?|weeks?|months?|years?)$/i);
+            if (dateMatch) {
+                const operator = dateMatch[1];
+                const valuePart = dateMatch[2];
+                const unit = dateMatch[3].toLowerCase();
+                let value;
+                
+                if (isNaN(valuePart)) {
+                    // It's a variable name, look it up
+                    if (variables[valuePart] !== undefined && !isNaN(variables[valuePart])) {
+                        value = parseInt(variables[valuePart], 10);
+                    } else {
+                        return `Error: Variable '${valuePart}' is not a valid number.`;
+                    }
+                } else {
+                    // It's a number
+                    value = parseInt(valuePart, 10);
+                }
+                
+                const today = new Date();
+                
+                if (operator === '+') {
+                    if (unit.startsWith('day')) today.setDate(today.getDate() + value);
+                    else if (unit.startsWith('week')) today.setDate(today.getDate() + (value * 7));
+                    else if (unit.startsWith('month')) today.setMonth(today.getMonth() + value);
+                    else if (unit.startsWith('year')) today.setFullYear(today.getFullYear() + value);
+                } else if (operator === '-') {
+                    if (unit.startsWith('day')) today.setDate(today.getDate() - value);
+                    else if (unit.startsWith('week')) today.setDate(today.getDate() - (value * 7));
+                    else if (unit.startsWith('month')) today.setMonth(today.getMonth() - value);
+                    else if (unit.startsWith('year')) today.setFullYear(today.getFullYear() - value);
+                }
+                
+                return today.toDateString();
+            }
+
+            // New: Check for time calculation pattern (e.g., "14:00 + 4 hours")
+            const timeMatch = line.match(/^(\d{1,2}:\d{2})\s*([+\-])\s*(\d+)\s*(hours?|minutes?)$/i);
+            if (timeMatch) {
+                const timeString = timeMatch[1];
+                const operator = timeMatch[2];
+                const value = parseInt(timeMatch[3], 10);
+                const unit = timeMatch[4].toLowerCase();
+
+                const [hours, minutes] = timeString.split(':').map(Number);
+                const date = new Date();
+                date.setHours(hours, minutes, 0, 0);
+
+                if (operator === '+') {
+                    if (unit.startsWith('hour')) date.setHours(date.getHours() + value);
+                    else if (unit.startsWith('minute')) date.setMinutes(date.getMinutes() + value);
+                } else if (operator === '-') {
+                    if (unit.startsWith('hour')) date.setHours(date.getHours() - value);
+                    else if (unit.startsWith('minute')) date.setMinutes(date.getMinutes() - value);
+                }
+
+                // Format the time as HH:MM
+                const newHours = String(date.getHours()).padStart(2, '0');
+                const newMinutes = String(date.getMinutes()).padStart(2, '0');
+                return `${newHours}:${newMinutes}`;
+            }
+
+            // If it's not an assignment or a date calculation, try to evaluate it as a direct expression
             try {
                 const sanitizedExpression = replaceVariables(line);
                 const result = calculate(sanitizedExpression);
@@ -245,20 +369,85 @@ total"
             outputArea.innerHTML = outputHTML || '<div class="text-gray-400">Your results will appear here in real-time.</div>';
         };
 
+        // --- Event Listeners ---
+
         // Event listener for real-time processing as the user types
         inputArea.addEventListener('input', processInput);
         
-        // Event listener for the new erase button
+        // Event listener for the erase button
         eraseButton.addEventListener('click', () => {
             inputArea.value = '';
             processInput();
+            showMessage('Calculator cleared!');
+        });
+        
+        // Event listeners for save buttons
+        saveButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const slot = button.id.split('-')[1];
+                const key = `instacalc_slot_${slot}`;
+                const currentValue = inputArea.value;
+
+                if (localStorage.getItem(key)) {
+                    // Show confirmation modal
+                    confirmModal.classList.remove('hidden');
+                    confirmModal.classList.add('flex');
+                    
+                    // Handle user's choice
+                    confirmOk.onclick = () => {
+                        localStorage.setItem(key, currentValue);
+                        confirmModal.classList.add('hidden');
+                        confirmModal.classList.remove('flex');
+                        showMessage(`Calculation saved to slot ${slot}!`);
+                    };
+                    confirmCancel.onclick = () => {
+                        confirmModal.classList.add('hidden');
+                        confirmModal.classList.remove('flex');
+                    };
+                } else {
+                    localStorage.setItem(key, currentValue);
+                    showMessage(`Calculation saved to slot ${slot}!`);
+                }
+            });
+        });
+
+        // Event listeners for load buttons
+        loadButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const slot = button.id.split('-')[1];
+                const key = `instacalc_slot_${slot}`;
+                const savedValue = localStorage.getItem(key);
+
+                if (savedValue) {
+                    inputArea.value = savedValue;
+                    processInput();
+                    showMessage(`Calculation loaded from slot ${slot}!`);
+                } else {
+                    showMessage(`Slot ${slot} is empty.`);
+                }
+            });
         });
 
         // Initial processing on page load
         window.addEventListener('DOMContentLoaded', () => {
              // Set a default value and trigger the initial calculation
             inputArea.value = `// Welcome to Insta-Clone!
-// Now supports percentages and unit conversions.
+// Now supports date, time, percentage, and unit calculations.
+
+// Date calculations with variables
+y = 20
+today + y days
+
+// Expanded date calculations (weeks, months, years)
+today + 3 weeks
+today - 6 months
+today + 2 years
+
+// Time calculations
+14:00 + 4 hours
+9:30 AM + 30 minutes
+
+// Use the buttons at the bottom of the page to save and load your work.
 
 // Percentage calculations
 340 + 15%

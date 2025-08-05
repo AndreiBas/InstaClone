@@ -57,6 +57,12 @@
         #inputArea .operator {
             color: #a1a1aa; /* Gray-400 for operators like = */
         }
+        #inputArea .keyword {
+            color: #c084fc; /* Purple-400 for keywords like 'today' and 'to' */
+        }
+        #inputArea .unit {
+            color: #2dd4bf; /* Teal-400 for units like 'usd', 'm', 'days' */
+        }
         
         /* Custom styles for the toggle switch */
         .toggle-switch-container {
@@ -107,8 +113,8 @@
                 <button id="eraseButton" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg shadow-lg hover:bg-red-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50">Erase</button>
             </div>
             
-            <div class="relative flex-1">
-                <!-- Changed to a contenteditable div for syntax highlighting -->
+            <div class="relative flex-1 min-h-0">
+                <!-- The h-full class makes this div fill its newly constrained parent -->
                 <div
                     id="inputArea"
                     contenteditable="true"
@@ -204,6 +210,17 @@
             // Mass units
             kg: { lb: 2.20462 },
             lb: { kg: 0.453592 },
+        };
+
+        // Definitions for syntax highlighting
+        const specialWords = {
+            'today': 'keyword', 'to': 'keyword',
+            'usd': 'unit', 'eur': 'unit', 'gbp': 'unit',
+            'm': 'unit', 'ft': 'unit', 'cm': 'unit',
+            'kg': 'unit', 'lb': 'unit',
+            'days': 'unit', 'day': 'unit', 'weeks': 'unit', 'week': 'unit',
+            'months': 'unit', 'month': 'unit', 'years': 'unit', 'year': 'unit',
+            'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
         };
         
         // --- Helper Functions ---
@@ -492,102 +509,96 @@
         };
 
         /**
-         * Handles syntax highlighting for the input area, preserving the cursor position.
-         * This new version saves the cursor's absolute position and restores it by
-         * walking the new DOM tree, which is a more robust approach.
+         * Handles syntax highlighting for the input area using a token-based approach
+         * and preserves the cursor position correctly.
          */
         const highlightInput = () => {
-            const content = inputArea.textContent;
-            
-            // Step 1: Save the current cursor position as an absolute offset.
+            // Step 1: Save the current cursor position.
             let savedOffset = 0;
             const selection = window.getSelection();
-            const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-            if (range) {
-                const preHighlightRange = range.cloneRange();
-                preHighlightRange.selectNodeContents(inputArea);
-                preHighlightRange.setEnd(range.startContainer, range.startOffset);
-                savedOffset = preHighlightRange.toString().length;
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const preCaretRange = range.cloneRange();
+                preCaretRange.selectNodeContents(inputArea);
+                preCaretRange.setEnd(range.startContainer, range.startOffset);
+                savedOffset = preCaretRange.toString().length;
             }
             
             // Step 2: Generate the new HTML with syntax highlighting.
-            let highlightedHtml = '';
+            const content = inputArea.textContent;
             const definedVariables = new Set();
             const lines = content.split('\n');
-            const assignmentRegex = /^([a-zA-Z_]\w*)\s*=\s*(.*)$/;
-            
-            lines.forEach(line => {
-                const commentIndex = line.indexOf('//');
-                let codePart = commentIndex !== -1 ? line.substring(0, commentIndex) : line;
-                let commentPart = commentIndex !== -1 ? line.substring(commentIndex) : null;
+            const assignmentRegex = /^([a-zA-Z_]\w*)\s*=/;
+            const escapeHtml = (text) => text.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
 
-                let processedLine = '';
+            const highlightedLines = lines.map(line => {
+                const commentIndex = line.indexOf('//');
+                const codePart = commentIndex !== -1 ? line.substring(0, commentIndex) : line;
+                const commentPart = commentIndex !== -1 ? `<span class="comment">${escapeHtml(line.substring(commentIndex))}</span>` : '';
+
+                let processedCode = '';
                 const assignmentMatch = codePart.trim().match(assignmentRegex);
+                const tokens = codePart.split(/(\b[a-zA-Z_]\w*\b|=|\s+)/).filter(Boolean);
+
                 if (assignmentMatch) {
                     const varName = assignmentMatch[1];
                     const varClass = definedVariables.has(varName) ? 'variable-redefined' : 'variable-new';
-                    
-                    // Create a regex to find the variable and its surrounding whitespace
-                    const varRegex = new RegExp(`\\b(${varName})\\b`);
-                    const parts = codePart.split(varRegex);
-                    
-                    processedLine = parts.map(part => {
-                        if (part === varName) {
-                            return `<span class="${varClass}">${part}</span>`;
-                        } else {
-                            // Also highlight the operator
-                            return part.replace(/(=)/g, `<span class="operator">$1</span>`);
-                        }
-                    }).join('');
-
                     definedVariables.add(varName);
+                    let isVarFound = false;
+
+                    tokens.forEach(token => {
+                        if (!isVarFound && token === varName) {
+                            processedCode += `<span class="${varClass}">${escapeHtml(token)}</span>`;
+                            isVarFound = true;
+                        } else if (specialWords[token]) {
+                            processedCode += `<span class="${specialWords[token]}">${escapeHtml(token)}</span>`;
+                        } else if (token === '=') {
+                            processedCode += `<span class="operator">${token}</span>`;
+                        } else {
+                            processedCode += escapeHtml(token);
+                        }
+                    });
                 } else {
-                    processedLine = codePart.replace(/(=)/g, `<span class="operator">$1</span>`);
+                    tokens.forEach(token => {
+                        if (specialWords[token]) {
+                            processedCode += `<span class="${specialWords[token]}">${escapeHtml(token)}</span>`;
+                        } else if (token === '=') {
+                            processedCode += `<span class="operator">${token}</span>`;
+                        } else {
+                            processedCode += escapeHtml(token);
+                        }
+                    });
                 }
-                
-                if (commentPart) {
-                    processedLine += `<span class="comment">${commentPart}</span>`;
-                }
-
-                highlightedHtml += processedLine + '\n';
+                return processedCode + commentPart;
             });
-
-            // Step 3: Replace the content and restore the cursor.
-            // Do not trim the HTML to preserve trailing newlines and spaces.
+            
+            const highlightedHtml = highlightedLines.join('\n');
             inputArea.innerHTML = highlightedHtml;
 
-            if (savedOffset >= 0) {
-                let charCount = 0;
-                let newRange = document.createRange();
-                
-                // Find the new node and offset for the cursor using a TreeWalker
-                const treeWalker = document.createTreeWalker(inputArea, NodeFilter.SHOW_TEXT);
-                let textNode;
+            // Step 3: Restore the cursor.
+            let charCount = 0;
+            const newRange = document.createRange();
+            const treeWalker = document.createTreeWalker(inputArea, NodeFilter.SHOW_TEXT);
+            let node;
 
-                while ((textNode = treeWalker.nextNode())) {
-                    if (charCount + textNode.length >= savedOffset) {
-                        newRange.setStart(textNode, savedOffset - charCount);
-                        newRange.collapse(true);
-                        selection.removeAllRanges();
-                        selection.addRange(newRange);
-                        return; // Exit once cursor is restored
-                    }
-                    charCount += textNode.length;
+            while (node = treeWalker.nextNode()) {
+                const nextCharCount = charCount + node.length;
+                if (nextCharCount >= savedOffset) {
+                    newRange.setStart(node, savedOffset - charCount);
+                    newRange.collapse(true);
+                    selection.removeAllRanges();
+                    selection.addRange(newRange);
+                    return;
                 }
-                
-                // Fallback: If the cursor position was at the very end of the content,
-                // the loop might finish. This places the cursor at the end.
-                if (inputArea.childNodes.length > 0) {
-                     const lastNode = inputArea.childNodes[inputArea.childNodes.length - 1];
-                     if (lastNode.nodeType === Node.TEXT_NODE) {
-                         newRange.setStart(lastNode, lastNode.length);
-                         newRange.collapse(true);
-                         selection.removeAllRanges();
-                         selection.addRange(newRange);
-                     }
-                }
+                charCount = nextCharCount;
             }
+             // Fallback for when the cursor is at the very end
+            newRange.selectNodeContents(inputArea);
+            newRange.collapse(false);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
         };
+
 
         // --- Wake Lock Functionality ---
 
@@ -642,63 +653,33 @@
         // Event listener for real-time processing as the user types
         inputArea.addEventListener('input', processInput);
         
-        // Fix for the Enter key issue
+        // -- THIS IS THE FIX --
+        // A robust listener to correctly handle the 'Enter' key.
         inputArea.addEventListener('keydown', (event) => {
             if (event.key === 'Enter') {
-                event.preventDefault();
+                event.preventDefault(); // Prevent default (and messy) browser behavior
 
-                // Manually insert a newline character
                 const selection = window.getSelection();
-                const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-                if (!range) return;
-                
-                const textContent = inputArea.textContent;
-                const offset = selection.anchorOffset;
-                const node = selection.anchorNode;
-                
-                // Calculate the absolute cursor position
-                let currentPos = 0;
-                const walker = document.createTreeWalker(inputArea, NodeFilter.SHOW_TEXT);
-                let currentNode;
-                while (currentNode = walker.nextNode()) {
-                    if (currentNode === node) {
-                        currentPos += offset;
-                        break;
-                    }
-                    currentPos += currentNode.textContent.length;
-                }
+                if (!selection.rangeCount) return;
 
-                // Insert the newline
-                const newContent = textContent.substring(0, currentPos) + '\n' + textContent.substring(currentPos);
-                
-                // Update the content and restore the cursor
-                inputArea.textContent = newContent;
-                
-                // After updating textContent, the cursor is at the beginning.
-                // We need to restore it to the new line.
-                const newPosition = currentPos + 1;
-                
-                let charCount = 0;
-                let newRange = document.createRange();
-                const treeWalker = document.createTreeWalker(inputArea, NodeFilter.SHOW_TEXT);
-                let textNode;
+                const range = selection.getRangeAt(0);
+                range.deleteContents(); // Clear selection if any
 
-                while ((textNode = treeWalker.nextNode())) {
-                    if (charCount + textNode.length >= newPosition) {
-                        newRange.setStart(textNode, newPosition - charCount);
-                        newRange.collapse(true);
-                        selection.removeAllRanges();
-                        selection.addRange(newRange);
-                        break;
-                    }
-                    charCount += textNode.length;
-                }
-                
-                // Immediately process the input to update output and highlighting
-                processInput();
+                const newlineNode = document.createTextNode('\n');
+                range.insertNode(newlineNode);
+
+                // Move cursor to after the new line
+                range.setStartAfter(newlineNode);
+                range.collapse(true);
+
+                selection.removeAllRanges();
+                selection.addRange(range);
+
+                // The 'input' event will now fire automatically due to the DOM change,
+                // which correctly triggers processInput().
             }
         });
-        
+
         // Event listener for the erase button
         eraseButton.addEventListener('click', () => {
             inputArea.textContent = '';
@@ -784,7 +765,6 @@ today + 2 years
 
 // Time calculations
 14:00 + 4 hours
-9:30 AM + 30 minutes
 
 // This is an example of a commented line
 flight = 33 // per person

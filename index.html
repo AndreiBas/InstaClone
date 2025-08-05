@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insta-Clone Calculator</title>
+    <!-- Use the Inter font from Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom scrollbar styles */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1f2937;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #4b5563;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background-color: #6b7280;
+        }
+        /* Style for the textarea to match the output area */
+        #inputArea {
+            -webkit-box-shadow: none;
+            -moz-box-shadow: none;
+            box-shadow: none;
+            outline: none;
+            resize: none;
+            line-height: 1.5;
+            padding: 1.5rem;
+            color: #d1d5db; /* Light gray text */
+            background-color: #111827; /* Dark background */
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-200 antialiased flex items-center justify-center min-h-screen p-4">
+    <div class="w-full max-w-4xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[80vh]">
+        <!-- Left Panel: Input Area -->
+        <div class="flex-1 flex flex-col p-6 md:p-8">
+            <div class="flex justify-between items-center mb-2">
+                <h1 class="text-3xl font-bold text-white">Insta-Clone</h1>
+                <button id="eraseButton" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg shadow-lg hover:bg-red-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50">Erase</button>
+            </div>
+            <p class="text-gray-400 mb-6">Type your calculations below. Define variables like `x = 10` and use them in subsequent lines.</p>
+            <div class="relative flex-1">
+                <textarea
+                    id="inputArea"
+                    class="w-full h-full rounded-xl bg-gray-900 text-gray-200 font-mono text-lg transition-all duration-300 focus:ring-4 focus:ring-blue-500/50"
+                    placeholder="2500 * 50
+tax_rate = 0.15
+total = (2500 * 50) + (2500 * 50 * tax_rate)
+total"
+                ></textarea>
+            </div>
+        </div>
+        <!-- Right Panel: Output Area -->
+        <div class="flex-1 flex flex-col p-6 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30">
+            <h2 class="text-2xl font-bold text-white mb-6">Results</h2>
+            <div id="outputArea" class="relative flex-1 bg-gray-900 rounded-xl p-6 overflow-y-auto text-gray-200 font-mono text-lg leading-relaxed">
+                <div class="text-gray-400">Your results will appear here in real-time.</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- Core Application Logic ---
+        
+        // DOM element references
+        const inputArea = document.getElementById('inputArea');
+        const outputArea = document.getElementById('outputArea');
+        const eraseButton = document.getElementById('eraseButton');
+
+        // Global object to store user-defined variables
+        let variables = {};
+        
+        // Hardcoded conversion rates for demonstration purposes
+        const conversionRates = {
+            usd: { eur: 0.92, gbp: 0.78 },
+            eur: { usd: 1.09, gbp: 0.85 },
+            gbp: { usd: 1.28, eur: 1.17 },
+            
+            // Length units
+            m: { ft: 3.28084, cm: 100 },
+            ft: { m: 0.3048, cm: 30.48 },
+            cm: { m: 0.01, ft: 0.0328084 },
+
+            // Mass units
+            kg: { lb: 2.20462 },
+            lb: { kg: 0.453592 },
+        };
+        
+        /**
+         * Parses and evaluates a single line of input.
+         * @param {string} line The single line of text to evaluate.
+         * @returns {string|null} The calculated result as a string, or null if the line is a variable assignment.
+         */
+        const evaluateLine = (line) => {
+            line = line.trim();
+            if (!line) return null; // Skip empty lines
+            
+            // Check for variable assignment (e.g., `variable = value`)
+            const assignmentMatch = line.match(/^([a-zA-Z_]\w*)\s*=\s*(.*)$/);
+            if (assignmentMatch) {
+                const varName = assignmentMatch[1];
+                const expression = assignmentMatch[2];
+                try {
+                    // Replace variables in the expression before calculating
+                    const sanitizedExpression = replaceVariables(expression);
+                    const result = calculate(sanitizedExpression);
+                    variables[varName] = result; // Store the result in the variables object
+                    return null; // Return null for assignments, as there's no output to display
+                } catch (e) {
+                    return `Error: Invalid assignment for '${varName}'.`;
+                }
+            }
+
+            // If it's not an assignment, try to evaluate it as a direct expression
+            try {
+                const sanitizedExpression = replaceVariables(line);
+                const result = calculate(sanitizedExpression);
+                if (result !== undefined) {
+                    return result;
+                }
+            } catch (e) {
+                // If it fails, it might be an invalid expression or a comment
+                return null;
+            }
+
+            return null; // For lines that don't produce a result (e.g., comments)
+        };
+        
+        /**
+         * Replaces user-defined variables in an expression with their stored values.
+         * @param {string} expression The mathematical expression string.
+         * @returns {string} The expression with variables replaced.
+         */
+        const replaceVariables = (expression) => {
+            // Sort keys by length in descending order to avoid issues with variable names that are substrings of others (e.g., `a` vs `area`).
+            const sortedKeys = Object.keys(variables).sort((a, b) => b.length - a.length);
+
+            let replacedExpression = expression;
+            for (const key of sortedKeys) {
+                // Use a regular expression with a word boundary (\b) to ensure we're replacing the full variable name
+                const regex = new RegExp(`\\b${key}\\b`, 'g');
+                replacedExpression = replacedExpression.replace(regex, variables[key]);
+            }
+            return replacedExpression;
+        };
+
+        /**
+         * A safer, custom function to perform calculations, including percentages and unit conversions.
+         * @param {string} expression The mathematical expression to calculate.
+         * @returns {number|string|undefined} The result of the calculation.
+         */
+        const calculate = (expression) => {
+            // Step 1: Check for unit conversion pattern
+            // Regex to match "value unit to unit"
+            const conversionMatch = expression.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*to\s*([a-zA-Z]+)$/);
+            if (conversionMatch) {
+                const value = parseFloat(conversionMatch[1]);
+                const fromUnit = conversionMatch[2].toLowerCase();
+                const toUnit = conversionMatch[3].toLowerCase();
+
+                // Check if the conversion is supported
+                if (conversionRates[fromUnit] && conversionRates[fromUnit][toUnit]) {
+                    const rate = conversionRates[fromUnit][toUnit];
+                    return value * rate;
+                } else {
+                    return `Error: Unsupported conversion from '${fromUnit}' to '${toUnit}'.`;
+                }
+            }
+
+            // Step 2: If no conversion, handle percentage calculations
+            const percentageRegex = /((?:\d+(?:\.\d+)?))\s*([+\-*/])\s*((?:\d+(?:\.\d+)?))\s*%/g;
+            let preprocessedExpression = expression;
+            let match;
+
+            while ((match = percentageRegex.exec(preprocessedExpression)) !== null) {
+                const baseValue = parseFloat(match[1]);
+                const operator = match[2];
+                const percentageValue = parseFloat(match[3]);
+                
+                let replacement;
+                if (operator === '+' || operator === '-') {
+                    replacement = `${baseValue} ${operator} (${baseValue} * ${percentageValue} / 100)`;
+                } else {
+                    replacement = `${baseValue} ${operator} (${percentageValue} / 100)`;
+                }
+
+                preprocessedExpression =
+                    preprocessedExpression.substring(0, match.index) +
+                    replacement +
+                    preprocessedExpression.substring(match.index + match[0].length);
+
+                percentageRegex.lastIndex = 0;
+            }
+
+            // Step 3: Evaluate the final expression
+            try {
+                const result = new Function(`return ${preprocessedExpression}`)();
+                if (typeof result === 'number' && !isNaN(result)) {
+                    return result;
+                }
+                return undefined;
+            } catch (error) {
+                return undefined;
+            }
+        };
+
+        /**
+         * The main function to process all lines from the input area.
+         */
+        const processInput = () => {
+            variables = {};
+            const lines = inputArea.value.split('\n');
+            let outputHTML = '';
+
+            lines.forEach((line) => {
+                const trimmedLine = line.trim();
+                const result = evaluateLine(trimmedLine);
+                
+                if (result !== null && result !== undefined) {
+                    outputHTML += `<div class="flex items-start">
+                                      <span class="mr-4 text-blue-400 font-bold">></span>
+                                      <span class="flex-1">${line}</span>
+                                      <span class="flex-1 text-right text-gray-400">= ${result}</span>
+                                  </div>`;
+                } else if (trimmedLine.length > 0) {
+                    outputHTML += `<div class="flex items-start">
+                                      <span class="mr-4 text-gray-500 font-bold">></span>
+                                      <span class="flex-1 text-gray-500">${line}</span>
+                                  </div>`;
+                }
+            });
+            
+            outputArea.innerHTML = outputHTML || '<div class="text-gray-400">Your results will appear here in real-time.</div>';
+        };
+
+        // Event listener for real-time processing as the user types
+        inputArea.addEventListener('input', processInput);
+        
+        // Event listener for the new erase button
+        eraseButton.addEventListener('click', () => {
+            inputArea.value = '';
+            processInput();
+        });
+
+        // Initial processing on page load
+        window.addEventListener('DOMContentLoaded', () => {
+             // Set a default value and trigger the initial calculation
+            inputArea.value = `// Welcome to Insta-Clone!
+// Now supports percentages and unit conversions.
+
+// Percentage calculations
+340 + 15%
+
+// Unit conversions
+23 usd to eur
+100 m to ft
+
+// You can use conversions with variables too
+distance_m = 50
+distance_m to cm
+
+// The result of the last line will be displayed
+25 gbp to usd`;
+            processInput();
+        });
+
+    </script>
+</body>
+</html>

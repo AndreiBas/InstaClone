@@ -28,7 +28,8 @@
         ::-webkit-scrollbar-thumb:hover {
             background-color: #6b7280;
         }
-        /* Style for the textarea to match the output area */
+
+        /* Styles for the contenteditable div (our new input area) */
         #inputArea {
             -webkit-box-shadow: none;
             -moz-box-shadow: none;
@@ -39,7 +40,24 @@
             padding: 1.5rem;
             color: #d1d5db; /* Light gray text */
             background-color: #111827; /* Dark background */
+            white-space: pre-wrap; /* Preserve whitespace and line breaks */
+            caret-color: #fff; /* White cursor */
+            overflow-y: auto; /* Enable scrolling */
         }
+        /* Style for the syntax-highlighted spans */
+        #inputArea .variable-new {
+            color: #60a5fa; /* Blue */
+        }
+        #inputArea .variable-redefined {
+            color: #f87171; /* Red */
+        }
+        #inputArea .comment {
+            color: #facc15; /* Yellow */
+        }
+        #inputArea .operator {
+            color: #a1a1aa; /* Gray-400 for operators like = */
+        }
+        
         /* Custom styles for the toggle switch */
         .toggle-switch-container {
             display: inline-block;
@@ -90,14 +108,12 @@
             </div>
             
             <div class="relative flex-1">
-                <textarea
+                <!-- Changed to a contenteditable div for syntax highlighting -->
+                <div
                     id="inputArea"
+                    contenteditable="true"
                     class="w-full h-full rounded-xl bg-gray-900 text-gray-200 font-mono text-lg transition-all duration-300 focus:ring-4 focus:ring-blue-500/50"
-                    placeholder="2500 * 50
-tax_rate = 0.15
-total = (2500 * 50) + (2500 * 50 * tax_rate)
-total"
-                ></textarea>
+                ></div>
             </div>
         </div>
         <!-- Right Panel: Output Area -->
@@ -211,6 +227,84 @@ total"
         };
 
         /**
+         * A safer, custom function to perform calculations, including percentages and unit conversions.
+         * @param {string} expression The mathematical expression to calculate.
+         * @returns {number|string|undefined} The result of the calculation.
+         */
+        const calculate = (expression) => {
+            // Step 1: Check for unit conversion pattern
+            // Regex to match "value unit to unit"
+            const conversionMatch = expression.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*to\s*([a-zA-Z]+)$/);
+            if (conversionMatch) {
+                const value = parseFloat(conversionMatch[1]);
+                const fromUnit = conversionMatch[2].toLowerCase();
+                const toUnit = conversionMatch[3].toLowerCase();
+
+                // Check if the conversion is supported
+                if (conversionRates[fromUnit] && conversionRates[fromUnit][toUnit]) {
+                    const rate = conversionRates[fromUnit][toUnit];
+                    return value * rate;
+                } else {
+                    return `Error: Unsupported conversion from '${fromUnit}' to '${toUnit}'.`;
+                }
+            }
+
+            // Step 2: If no conversion, handle percentage calculations
+            const percentageRegex = /((?:\d+(?:\.\d+)?))\s*([+\-*/])\s*((?:\d+(?:\.\d+)?))\s*%/g;
+            let preprocessedExpression = expression;
+            let match;
+
+            while ((match = percentageRegex.exec(preprocessedExpression)) !== null) {
+                const baseValue = parseFloat(match[1]);
+                const operator = match[2];
+                const percentageValue = parseFloat(match[3]);
+                
+                let replacement;
+                if (operator === '+' || operator === '-') {
+                    replacement = `${baseValue} ${operator} (${baseValue} * ${percentageValue} / 100)`;
+                } else {
+                    replacement = `${baseValue} ${operator} (${percentageValue} / 100)`;
+                }
+
+                preprocessedExpression =
+                    preprocessedExpression.substring(0, match.index) +
+                    replacement +
+                    preprocessedExpression.substring(match.index + match[0].length);
+
+                percentageRegex.lastIndex = 0;
+            }
+
+            // Step 3: Evaluate the final expression
+            try {
+                const result = new Function(`return ${preprocessedExpression}`)();
+                if (typeof result === 'number' && !isNaN(result)) {
+                    return result;
+                }
+                return undefined;
+            } catch (error) {
+                return undefined;
+            }
+        };
+
+        /**
+         * Replaces user-defined variables in an expression with their stored values.
+         * @param {string} expression The mathematical expression string.
+         * @returns {string} The expression with variables replaced.
+         */
+        const replaceVariables = (expression) => {
+            // Sort keys by length in descending order to avoid issues with variable names that are substrings of others (e.g., `a` vs `area`).
+            const sortedKeys = Object.keys(variables).sort((a, b) => b.length - a.length);
+
+            let replacedExpression = expression;
+            for (const key of sortedKeys) {
+                // Use a regular expression with a word boundary (\b) to ensure we're replacing the full variable name
+                const regex = new RegExp(`\\b${key}\\b`, 'g');
+                replacedExpression = replacedExpression.replace(regex, variables[key]);
+            }
+            return replacedExpression;
+        };
+
+        /**
          * Parses and evaluates a single line of input.
          * @param {string} line The single line of text to evaluate.
          * @returns {string|null} The calculated result as a string, or null if the line is a variable assignment.
@@ -312,105 +406,82 @@ total"
 
             return null; // For lines that don't produce a result (e.g., comments)
         };
-        
-        /**
-         * Replaces user-defined variables in an expression with their stored values.
-         * @param {string} expression The mathematical expression string.
-         * @returns {string} The expression with variables replaced.
-         */
-        const replaceVariables = (expression) => {
-            // Sort keys by length in descending order to avoid issues with variable names that are substrings of others (e.g., `a` vs `area`).
-            const sortedKeys = Object.keys(variables).sort((a, b) => b.length - a.length);
-
-            let replacedExpression = expression;
-            for (const key of sortedKeys) {
-                // Use a regular expression with a word boundary (\b) to ensure we're replacing the full variable name
-                const regex = new RegExp(`\\b${key}\\b`, 'g');
-                replacedExpression = replacedExpression.replace(regex, variables[key]);
-            }
-            return replacedExpression;
-        };
 
         /**
-         * A safer, custom function to perform calculations, including percentages and unit conversions.
-         * @param {string} expression The mathematical expression to calculate.
-         * @returns {number|string|undefined} The result of the calculation.
-         */
-        const calculate = (expression) => {
-            // Step 1: Check for unit conversion pattern
-            // Regex to match "value unit to unit"
-            const conversionMatch = expression.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*to\s*([a-zA-Z]+)$/);
-            if (conversionMatch) {
-                const value = parseFloat(conversionMatch[1]);
-                const fromUnit = conversionMatch[2].toLowerCase();
-                const toUnit = conversionMatch[3].toLowerCase();
-
-                // Check if the conversion is supported
-                if (conversionRates[fromUnit] && conversionRates[fromUnit][toUnit]) {
-                    const rate = conversionRates[fromUnit][toUnit];
-                    return value * rate;
-                } else {
-                    return `Error: Unsupported conversion from '${fromUnit}' to '${toUnit}'.`;
-                }
-            }
-
-            // Step 2: If no conversion, handle percentage calculations
-            const percentageRegex = /((?:\d+(?:\.\d+)?))\s*([+\-*/])\s*((?:\d+(?:\.\d+)?))\s*%/g;
-            let preprocessedExpression = expression;
-            let match;
-
-            while ((match = percentageRegex.exec(preprocessedExpression)) !== null) {
-                const baseValue = parseFloat(match[1]);
-                const operator = match[2];
-                const percentageValue = parseFloat(match[3]);
-                
-                let replacement;
-                if (operator === '+' || operator === '-') {
-                    replacement = `${baseValue} ${operator} (${baseValue} * ${percentageValue} / 100)`;
-                } else {
-                    replacement = `${baseValue} ${operator} (${percentageValue} / 100)`;
-                }
-
-                preprocessedExpression =
-                    preprocessedExpression.substring(0, match.index) +
-                    replacement +
-                    preprocessedExpression.substring(match.index + match[0].length);
-
-                percentageRegex.lastIndex = 0;
-            }
-
-            // Step 3: Evaluate the final expression
-            try {
-                const result = new Function(`return ${preprocessedExpression}`)();
-                if (typeof result === 'number' && !isNaN(result)) {
-                    return result;
-                }
-                return undefined;
-            } catch (error) {
-                return undefined;
-            }
-        };
-
-        /**
-         * The main function to process all lines from the input area.
+         * Updates the output area and calls the highlighting function.
          */
         const processInput = () => {
-            variables = {};
-            const lines = inputArea.value.split('\n');
-            let outputHTML = '';
+            // First, re-highlight the input area
+            highlightInput();
 
+            // Then, process the content for the output area
+            variables = {};
+            const lines = inputArea.textContent.split('\n');
+            let outputHTML = '';
+            
+            const assignmentRegex = /^([a-zA-Z_]\w*)\s*=.*$/;
+            
             lines.forEach((line) => {
                 const trimmedLine = line.trim();
-                const result = evaluateLine(trimmedLine);
                 
+                if (!trimmedLine) {
+                    outputHTML += `<div class="h-6"></div>`;
+                    return;
+                }
+
+                let codePart = line;
+                let commentPart = null;
+                const commentIndex = line.indexOf('//');
+                if (commentIndex !== -1) {
+                    codePart = line.substring(0, commentIndex);
+                    commentPart = line.substring(commentIndex);
+                }
+
+                const trimmedCodePart = codePart.trim();
+                let result = null;
+                let isRedefined = false;
+
+                if (trimmedCodePart) {
+                    const assignmentMatch = trimmedCodePart.match(assignmentRegex);
+                    if (assignmentMatch) {
+                        const varName = assignmentMatch[1];
+                        if (variables.hasOwnProperty(varName)) {
+                            isRedefined = true;
+                        }
+                    }
+                    result = evaluateLine(trimmedCodePart);
+                }
+
+                // Now build the output HTML based on the parts
                 if (result !== null && result !== undefined) {
+                    // It's a line with a result. The result number is now a bright green.
                     outputHTML += `<div class="flex items-start">
                                       <span class="mr-4 text-blue-400 font-bold">></span>
-                                      <span class="flex-1">${line}</span>
-                                      <span class="flex-1 text-right text-gray-400">= ${result}</span>
-                                  </div>`;
-                } else if (trimmedLine.length > 0) {
+                                      <span class="flex-1">${trimmedCodePart}</span>
+                                      <span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${result}</span></span>`;
+                    if (commentPart) {
+                        outputHTML += `<span class="text-yellow-400 ml-4">${commentPart}</span>`;
+                    }
+                    outputHTML += `</div>`;
+                } else if (assignmentRegex.test(trimmedCodePart)) {
+                    // It's a variable assignment
+                    const outputClass = isRedefined ? 'text-red-400' : 'text-blue-400';
                     outputHTML += `<div class="flex items-start">
+                                      <span class="mr-4 ${outputClass} font-bold">></span>
+                                      <span class="flex-1 ${outputClass}">${trimmedCodePart}</span>`;
+                    if (commentPart) {
+                        outputHTML += `<span class="text-yellow-400 ml-4">${commentPart}</span>`;
+                    }
+                    outputHTML += `</div>`;
+                } else if (commentPart) {
+                    // It's a pure comment line
+                    outputHTML += `<div class="flex items-start">
+                                      <span class="mr-4 text-yellow-400 font-bold">//</span>
+                                      <span class="flex-1 text-yellow-400">${commentPart.substring(2)}</span>
+                                  </div>`;
+                } else {
+                     // It's a non-comment, non-evaluative line
+                     outputHTML += `<div class="flex items-start">
                                       <span class="mr-4 text-gray-500 font-bold">></span>
                                       <span class="flex-1 text-gray-500">${line}</span>
                                   </div>`;
@@ -418,6 +489,104 @@ total"
             });
             
             outputArea.innerHTML = outputHTML || '<div class="text-gray-400">Your results will appear here in real-time.</div>';
+        };
+
+        /**
+         * Handles syntax highlighting for the input area, preserving the cursor position.
+         * This new version saves the cursor's absolute position and restores it by
+         * walking the new DOM tree, which is a more robust approach.
+         */
+        const highlightInput = () => {
+            const content = inputArea.textContent;
+            
+            // Step 1: Save the current cursor position as an absolute offset.
+            let savedOffset = 0;
+            const selection = window.getSelection();
+            const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+            if (range) {
+                const preHighlightRange = range.cloneRange();
+                preHighlightRange.selectNodeContents(inputArea);
+                preHighlightRange.setEnd(range.startContainer, range.startOffset);
+                savedOffset = preHighlightRange.toString().length;
+            }
+            
+            // Step 2: Generate the new HTML with syntax highlighting.
+            let highlightedHtml = '';
+            const definedVariables = new Set();
+            const lines = content.split('\n');
+            const assignmentRegex = /^([a-zA-Z_]\w*)\s*=\s*(.*)$/;
+            
+            lines.forEach(line => {
+                const commentIndex = line.indexOf('//');
+                let codePart = commentIndex !== -1 ? line.substring(0, commentIndex) : line;
+                let commentPart = commentIndex !== -1 ? line.substring(commentIndex) : null;
+
+                let processedLine = '';
+                const assignmentMatch = codePart.trim().match(assignmentRegex);
+                if (assignmentMatch) {
+                    const varName = assignmentMatch[1];
+                    const varClass = definedVariables.has(varName) ? 'variable-redefined' : 'variable-new';
+                    
+                    // Create a regex to find the variable and its surrounding whitespace
+                    const varRegex = new RegExp(`\\b(${varName})\\b`);
+                    const parts = codePart.split(varRegex);
+                    
+                    processedLine = parts.map(part => {
+                        if (part === varName) {
+                            return `<span class="${varClass}">${part}</span>`;
+                        } else {
+                            // Also highlight the operator
+                            return part.replace(/(=)/g, `<span class="operator">$1</span>`);
+                        }
+                    }).join('');
+
+                    definedVariables.add(varName);
+                } else {
+                    processedLine = codePart.replace(/(=)/g, `<span class="operator">$1</span>`);
+                }
+                
+                if (commentPart) {
+                    processedLine += `<span class="comment">${commentPart}</span>`;
+                }
+
+                highlightedHtml += processedLine + '\n';
+            });
+
+            // Step 3: Replace the content and restore the cursor.
+            // Do not trim the HTML to preserve trailing newlines and spaces.
+            inputArea.innerHTML = highlightedHtml;
+
+            if (savedOffset >= 0) {
+                let charCount = 0;
+                let newRange = document.createRange();
+                
+                // Find the new node and offset for the cursor using a TreeWalker
+                const treeWalker = document.createTreeWalker(inputArea, NodeFilter.SHOW_TEXT);
+                let textNode;
+
+                while ((textNode = treeWalker.nextNode())) {
+                    if (charCount + textNode.length >= savedOffset) {
+                        newRange.setStart(textNode, savedOffset - charCount);
+                        newRange.collapse(true);
+                        selection.removeAllRanges();
+                        selection.addRange(newRange);
+                        return; // Exit once cursor is restored
+                    }
+                    charCount += textNode.length;
+                }
+                
+                // Fallback: If the cursor position was at the very end of the content,
+                // the loop might finish. This places the cursor at the end.
+                if (inputArea.childNodes.length > 0) {
+                     const lastNode = inputArea.childNodes[inputArea.childNodes.length - 1];
+                     if (lastNode.nodeType === Node.TEXT_NODE) {
+                         newRange.setStart(lastNode, lastNode.length);
+                         newRange.collapse(true);
+                         selection.removeAllRanges();
+                         selection.addRange(newRange);
+                     }
+                }
+            }
         };
 
         // --- Wake Lock Functionality ---
@@ -428,33 +597,31 @@ total"
         const requestWakeLock = async () => {
             if ('wakeLock' in navigator) {
                 if (wakeLock !== null) {
-                    // Already have a lock, no need to request again
                     return;
                 }
                 try {
                     wakeLock = await navigator.wakeLock.request('screen');
                     wakeLock.addEventListener('release', () => {
                         console.log('Wake lock was released');
-                        wakeLock = null; // Reset the sentinel
+                        wakeLock = null; 
                         if (noSleepToggle.checked) {
-                            noSleepToggle.checked = false; // Sync the toggle
+                            noSleepToggle.checked = false;
                             showMessage('Screen wake lock was released.');
                         }
                     });
                     showMessage('Screen wake lock is active.');
                 } catch (err) {
-                    // This is the added error handling
                     console.error(`${err.name}, ${err.message}`);
                     if (err.name === 'NotAllowedError') {
                         showMessage('Failed to enable "No sleep mode". This feature may be blocked by your browser\'s security policy.');
                     } else {
                         showMessage(`Error: Could not activate "No sleep mode". Reason: ${err.message}`);
                     }
-                    noSleepToggle.checked = false; // Turn the toggle off if it fails
+                    noSleepToggle.checked = false;
                 }
             } else {
                  showMessage('Wake Lock API not supported in this browser.');
-                 noSleepToggle.checked = false; // Turn the toggle off
+                 noSleepToggle.checked = false;
             }
         };
 
@@ -475,9 +642,66 @@ total"
         // Event listener for real-time processing as the user types
         inputArea.addEventListener('input', processInput);
         
+        // Fix for the Enter key issue
+        inputArea.addEventListener('keydown', (event) => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+
+                // Manually insert a newline character
+                const selection = window.getSelection();
+                const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+                if (!range) return;
+                
+                const textContent = inputArea.textContent;
+                const offset = selection.anchorOffset;
+                const node = selection.anchorNode;
+                
+                // Calculate the absolute cursor position
+                let currentPos = 0;
+                const walker = document.createTreeWalker(inputArea, NodeFilter.SHOW_TEXT);
+                let currentNode;
+                while (currentNode = walker.nextNode()) {
+                    if (currentNode === node) {
+                        currentPos += offset;
+                        break;
+                    }
+                    currentPos += currentNode.textContent.length;
+                }
+
+                // Insert the newline
+                const newContent = textContent.substring(0, currentPos) + '\n' + textContent.substring(currentPos);
+                
+                // Update the content and restore the cursor
+                inputArea.textContent = newContent;
+                
+                // After updating textContent, the cursor is at the beginning.
+                // We need to restore it to the new line.
+                const newPosition = currentPos + 1;
+                
+                let charCount = 0;
+                let newRange = document.createRange();
+                const treeWalker = document.createTreeWalker(inputArea, NodeFilter.SHOW_TEXT);
+                let textNode;
+
+                while ((textNode = treeWalker.nextNode())) {
+                    if (charCount + textNode.length >= newPosition) {
+                        newRange.setStart(textNode, newPosition - charCount);
+                        newRange.collapse(true);
+                        selection.removeAllRanges();
+                        selection.addRange(newRange);
+                        break;
+                    }
+                    charCount += textNode.length;
+                }
+                
+                // Immediately process the input to update output and highlighting
+                processInput();
+            }
+        });
+        
         // Event listener for the erase button
         eraseButton.addEventListener('click', () => {
-            inputArea.value = '';
+            inputArea.textContent = '';
             processInput();
             showMessage('Calculator cleared!');
         });
@@ -487,14 +711,12 @@ total"
             button.addEventListener('click', () => {
                 const slot = button.id.split('-')[1];
                 const key = `instacalc_slot_${slot}`;
-                const currentValue = inputArea.value;
+                const currentValue = inputArea.textContent;
 
                 if (localStorage.getItem(key)) {
-                    // Show confirmation modal
                     confirmModal.classList.remove('hidden');
                     confirmModal.classList.add('flex');
                     
-                    // Handle user's choice
                     confirmOk.onclick = () => {
                         localStorage.setItem(key, currentValue);
                         confirmModal.classList.add('hidden');
@@ -520,7 +742,7 @@ total"
                 const savedValue = localStorage.getItem(key);
 
                 if (savedValue) {
-                    inputArea.value = savedValue;
+                    inputArea.textContent = savedValue;
                     processInput();
                     showMessage(`Calculation loaded from slot ${slot}!`);
                 } else {
@@ -548,7 +770,7 @@ total"
         // Initial processing on page load
         window.addEventListener('DOMContentLoaded', () => {
              // Set a default value and trigger the initial calculation
-            inputArea.value = `// Welcome to Insta-Clone!
+            inputArea.textContent = `// Welcome to Insta-Clone!
 // Now supports date, time, percentage, and unit calculations.
 
 // Date calculations with variables
@@ -563,6 +785,10 @@ today + 2 years
 // Time calculations
 14:00 + 4 hours
 9:30 AM + 30 minutes
+
+// This is an example of a commented line
+flight = 33 // per person
+flight = 50 // Re-assigning the value
 
 // Use the buttons at the bottom of the page to save and load your work.
 // Use the new "No sleep mode" toggle to prevent your screen from sleeping.

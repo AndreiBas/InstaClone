@@ -45,63 +45,58 @@
             overflow-y: auto; /* Enable scrolling */
         }
         /* Style for the syntax-highlighted spans */
-        #inputArea .variable-new {
+        #inputArea .variable-new, .output-highlight .variable-new {
             color: #60a5fa; /* Blue */
         }
-        #inputArea .variable-redefined {
+        #inputArea .variable-redefined, .output-highlight .variable-redefined {
             color: #f87171; /* Red */
         }
-        #inputArea .comment {
+        /* -- NEW STYLE -- */
+        #inputArea .variable-used, .output-highlight .variable-used {
+            color: #fb923c; /* Orange-400 */
+        }
+        #inputArea .comment, .output-highlight .comment {
             color: #facc15; /* Yellow */
         }
-        #inputArea .operator {
+        #inputArea .operator, .output-highlight .operator {
             color: #a1a1aa; /* Gray-400 for operators like = */
         }
-        #inputArea .keyword {
+        #inputArea .keyword, .output-highlight .keyword {
             color: #c084fc; /* Purple-400 for keywords like 'today' and 'to' */
         }
-        #inputArea .unit {
+        #inputArea .unit, .output-highlight .unit {
             color: #2dd4bf; /* Teal-400 for units like 'usd', 'm', 'days' */
         }
         
-        /* Custom styles for the toggle switch */
-        .toggle-switch-container {
-            display: inline-block;
-            height: 24px;
-            position: relative;
-            width: 48px;
+        /* Styles for Autocomplete Popup */
+        #autocomplete-popup {
+            position: absolute;
+            z-index: 100;
+            background-color: #1f2937; /* gray-800 */
+            border: 1px solid #374151; /* gray-700 */
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            max-height: 200px;
+            overflow-y: auto;
+            min-width: 150px;
         }
-        .toggle-switch-container input {
-            display: none;
-        }
-        .toggle-slider {
-            background-color: #4b5563; /* Gray background */
-            bottom: 0;
+        .autocomplete-item {
+            padding: 0.5rem 1rem;
             cursor: pointer;
-            left: 0;
-            position: absolute;
-            right: 0;
-            top: 0;
-            transition: .4s;
-            border-radius: 34px;
+            color: #d1d5db; /* gray-300 */
         }
-        .toggle-slider:before {
-            background-color: white;
-            bottom: 4px;
-            content: "";
-            height: 16px;
-            left: 4px;
-            position: absolute;
-            transition: .4s;
-            width: 16px;
-            border-radius: 50%;
+        .autocomplete-item:hover, .autocomplete-item.selected {
+            background-color: #4f46e5; /* indigo-600 */
+            color: white;
         }
-        input:checked + .toggle-slider {
-            background-color: #22c55e; /* Green background */
-        }
-        input:checked + .toggle-slider:before {
-            transform: translateX(24px);
-        }
+        
+        /* Custom styles for the toggle switch */
+        .toggle-switch-container { display: inline-block; height: 24px; position: relative; width: 48px; }
+        .toggle-switch-container input { display: none; }
+        .toggle-slider { background-color: #4b5563; bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; border-radius: 34px; }
+        .toggle-slider:before { background-color: white; bottom: 4px; content: ""; height: 16px; left: 4px; position: absolute; transition: .4s; width: 16px; border-radius: 50%; }
+        input:checked + .toggle-slider { background-color: #22c55e; }
+        input:checked + .toggle-slider:before { transform: translateX(24px); }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center justify-center min-h-screen p-4">
@@ -114,12 +109,8 @@
             </div>
             
             <div class="relative flex-1 min-h-0">
-                <!-- The h-full class makes this div fill its newly constrained parent -->
-                <div
-                    id="inputArea"
-                    contenteditable="true"
-                    class="w-full h-full rounded-xl bg-gray-900 text-gray-200 font-mono text-lg transition-all duration-300 focus:ring-4 focus:ring-blue-500/50"
-                ></div>
+                <div id="inputArea" contenteditable="true" class="w-full h-full rounded-xl bg-gray-900 text-gray-200 font-mono text-lg transition-all duration-300 focus:ring-4 focus:ring-blue-500/50"></div>
+                <div id="autocomplete-popup" class="hidden"></div>
             </div>
         </div>
         <!-- Right Panel: Output Area -->
@@ -140,22 +131,22 @@
         </div>
     </div>
 
-    <!-- Saved Calculations Section, now at the very bottom -->
+    <!-- Saved Calculations Section -->
     <div class="w-full max-w-4xl mt-8 p-6 md:p-8 bg-gray-800 rounded-2xl shadow-2xl">
         <h3 class="text-lg font-semibold text-white mb-2">Saved Calculations (3 slots)</h3>
         <div id="save-buttons" class="grid grid-cols-3 gap-2">
-            <button id="save-1" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors duration-200">Save 1</button>
-            <button id="save-2" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors duration-200">Save 2</button>
-            <button id="save-3" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700 transition-colors duration-200">Save 3</button>
+            <button class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 1</button>
+            <button class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 2</button>
+            <button class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 3</button>
         </div>
         <div id="load-buttons" class="grid grid-cols-3 gap-2 mt-2">
-            <button id="load-1" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200">Load 1</button>
-            <button id="load-2" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200">Load 2</button>
-            <button id="load-3" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 transition-colors duration-200">Load 3</button>
+            <button class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 1</button>
+            <button class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 2</button>
+            <button class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 3</button>
         </div>
     </div>
 
-    <!-- Confirmation Modal (hidden by default) -->
+    <!-- Confirmation & Message Modals -->
     <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70">
         <div class="bg-gray-800 rounded-xl p-6 w-96 shadow-2xl border border-gray-700">
             <h4 class="text-xl font-bold mb-4">Overwrite Calculation?</h4>
@@ -166,626 +157,352 @@
             </div>
         </div>
     </div>
-
-    <!-- Message Box (hidden by default) -->
-    <div id="message-box" class="fixed bottom-4 left-1/2 -translate-x-1/2 p-4 bg-gray-800 text-white rounded-lg shadow-lg z-50 hidden opacity-0 transition-opacity duration-300">
-        <p id="message-text"></p>
-    </div>
+    <div id="message-box" class="fixed bottom-4 left-1/2 -translate-x-1/2 p-4 bg-gray-800 text-white rounded-lg shadow-lg z-50 hidden opacity-0 transition-opacity duration-300"><p id="message-text"></p></div>
 
     <script>
         // --- Core Application Logic ---
         
-        // DOM element references
-        const inputArea = document.getElementById('inputArea');
-        const outputArea = document.getElementById('outputArea');
-        const eraseButton = document.getElementById('eraseButton');
+        const $ = (selector) => document.querySelector(selector);
+        const $$ = (selector) => document.querySelectorAll(selector);
 
-        // References for the new save/load functionality
-        const saveButtons = document.querySelectorAll('#save-buttons button');
-        const loadButtons = document.querySelectorAll('#load-buttons button');
-        const confirmModal = document.getElementById('confirm-modal');
-        const confirmOk = document.getElementById('confirm-ok');
-        const confirmCancel = document.getElementById('confirm-cancel');
-        const messageBox = document.getElementById('message-box');
-        const messageText = document.getElementById('message-text');
+        const inputArea = $('#inputArea');
+        const outputArea = $('#outputArea');
+        const eraseButton = $('#eraseButton');
+        const autocompletePopup = $('#autocomplete-popup');
+        const confirmModal = $('#confirm-modal');
+        const messageBox = $('#message-box');
 
-        // References for the new no-sleep mode
-        const noSleepToggle = document.getElementById('noSleepToggle');
-        let wakeLock = null; // A sentinel to hold the wake lock
-        
-        // Global object to store user-defined variables
         let variables = {};
+        let wakeLock = null;
+        let autocompleteState = { active: false, suggestions: [], selectedIndex: -1, wordStartIndex: -1 };
         
-        // Hardcoded conversion rates for demonstration purposes
         const conversionRates = {
-            usd: { eur: 0.92, gbp: 0.78 },
-            eur: { usd: 1.09, gbp: 0.85 },
-            gbp: { usd: 1.28, eur: 1.17 },
-            
-            // Length units
-            m: { ft: 3.28084, cm: 100 },
-            ft: { m: 0.3048, cm: 30.48 },
-            cm: { m: 0.01, ft: 0.0328084 },
-
-            // Mass units
-            kg: { lb: 2.20462 },
-            lb: { kg: 0.453592 },
+            usd: { eur: 0.92, gbp: 0.78 }, eur: { usd: 1.09, gbp: 0.85 }, gbp: { usd: 1.28, eur: 1.17 },
+            m: { ft: 3.28084, cm: 100 }, ft: { m: 0.3048, cm: 30.48 }, cm: { m: 0.01, ft: 0.0328084 },
+            kg: { lb: 2.20462 }, lb: { kg: 0.453592 },
         };
 
-        // Definitions for syntax highlighting
         const specialWords = {
-            'today': 'keyword', 'to': 'keyword',
-            'usd': 'unit', 'eur': 'unit', 'gbp': 'unit',
-            'm': 'unit', 'ft': 'unit', 'cm': 'unit',
-            'kg': 'unit', 'lb': 'unit',
-            'days': 'unit', 'day': 'unit', 'weeks': 'unit', 'week': 'unit',
-            'months': 'unit', 'month': 'unit', 'years': 'unit', 'year': 'unit',
-            'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
+            'today': 'keyword', 'to': 'keyword', 'usd': 'unit', 'eur': 'unit', 'gbp': 'unit',
+            'm': 'unit', 'ft': 'unit', 'cm': 'unit', 'kg': 'unit', 'lb': 'unit',
+            'days': 'unit', 'day': 'unit', 'weeks': 'unit', 'week': 'unit', 'months': 'unit', 'month': 'unit',
+            'years': 'unit', 'year': 'unit', 'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
         };
+
+        const allAutocompleteKeywords = () => new Set([...Object.keys(specialWords), ...Object.keys(variables)]);
         
         // --- Helper Functions ---
 
-        /**
-         * Shows a temporary message box with a given text.
-         * @param {string} text The message to display.
-         */
         const showMessage = (text) => {
-            messageText.textContent = text;
+            $('#message-text').textContent = text;
             messageBox.classList.remove('hidden');
-            setTimeout(() => {
-                messageBox.classList.remove('opacity-0');
-            }, 10);
+            setTimeout(() => messageBox.classList.remove('opacity-0'), 10);
             setTimeout(() => {
                 messageBox.classList.add('opacity-0');
-                setTimeout(() => {
-                    messageBox.classList.add('hidden');
-                }, 300);
+                setTimeout(() => messageBox.classList.add('hidden'), 300);
             }, 3000);
         };
 
-        /**
-         * A safer, custom function to perform calculations, including percentages and unit conversions.
-         * @param {string} expression The mathematical expression to calculate.
-         * @returns {number|string|undefined} The result of the calculation.
-         */
         const calculate = (expression) => {
-            // Step 1: Check for unit conversion pattern
-            // Regex to match "value unit to unit"
-            const conversionMatch = expression.match(/^(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*to\s*([a-zA-Z]+)$/);
+            const conversionMatch = expression.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*to\s*([a-zA-Z]+)$/);
             if (conversionMatch) {
-                const value = parseFloat(conversionMatch[1]);
-                const fromUnit = conversionMatch[2].toLowerCase();
-                const toUnit = conversionMatch[3].toLowerCase();
-
-                // Check if the conversion is supported
-                if (conversionRates[fromUnit] && conversionRates[fromUnit][toUnit]) {
-                    const rate = conversionRates[fromUnit][toUnit];
-                    return value * rate;
-                } else {
-                    return `Error: Unsupported conversion from '${fromUnit}' to '${toUnit}'.`;
+                const [, value, fromUnit, toUnit] = conversionMatch.map(s => s.toLowerCase());
+                if (conversionRates[fromUnit]?.[toUnit]) {
+                    return parseFloat(value) * conversionRates[fromUnit][toUnit];
                 }
+                return `Error: Unsupported conversion.`;
             }
-
-            // Step 2: If no conversion, handle percentage calculations
-            const percentageRegex = /((?:\d+(?:\.\d+)?))\s*([+\-*/])\s*((?:\d+(?:\.\d+)?))\s*%/g;
-            let preprocessedExpression = expression;
-            let match;
-
-            while ((match = percentageRegex.exec(preprocessedExpression)) !== null) {
-                const baseValue = parseFloat(match[1]);
-                const operator = match[2];
-                const percentageValue = parseFloat(match[3]);
-                
-                let replacement;
-                if (operator === '+' || operator === '-') {
-                    replacement = `${baseValue} ${operator} (${baseValue} * ${percentageValue} / 100)`;
-                } else {
-                    replacement = `${baseValue} ${operator} (${percentageValue} / 100)`;
-                }
-
-                preprocessedExpression =
-                    preprocessedExpression.substring(0, match.index) +
-                    replacement +
-                    preprocessedExpression.substring(match.index + match[0].length);
-
-                percentageRegex.lastIndex = 0;
-            }
-
-            // Step 3: Evaluate the final expression
+            expression = expression.replace(/(\d+(?:\.\d+)?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)%/g, (match, base, op, perc) => {
+                const p = parseFloat(perc) / 100;
+                return op === '+' || op === '-' ? `${base} ${op} (${base} * ${p})` : `${base} ${op} ${p}`;
+            });
             try {
-                const result = new Function(`return ${preprocessedExpression}`)();
-                if (typeof result === 'number' && !isNaN(result)) {
-                    return result;
-                }
-                return undefined;
-            } catch (error) {
-                return undefined;
-            }
+                const result = new Function(`return ${expression}`)();
+                return (typeof result === 'number' && !isNaN(result)) ? result : undefined;
+            } catch { return undefined; }
         };
 
-        /**
-         * Replaces user-defined variables in an expression with their stored values.
-         * @param {string} expression The mathematical expression string.
-         * @returns {string} The expression with variables replaced.
-         */
         const replaceVariables = (expression) => {
-            // Sort keys by length in descending order to avoid issues with variable names that are substrings of others (e.g., `a` vs `area`).
-            const sortedKeys = Object.keys(variables).sort((a, b) => b.length - a.length);
-
-            let replacedExpression = expression;
-            for (const key of sortedKeys) {
-                // Use a regular expression with a word boundary (\b) to ensure we're replacing the full variable name
-                const regex = new RegExp(`\\b${key}\\b`, 'g');
-                replacedExpression = replacedExpression.replace(regex, variables[key]);
-            }
-            return replacedExpression;
+            return Object.keys(variables)
+                .sort((a, b) => b.length - a.length)
+                .reduce((expr, key) => expr.replace(new RegExp(`\\b${key}\\b`, 'g'), variables[key]), expression);
         };
-
-        /**
-         * Parses and evaluates a single line of input.
-         * @param {string} line The single line of text to evaluate.
-         * @returns {string|null} The calculated result as a string, or null if the line is a variable assignment.
-         */
+        
         const evaluateLine = (line) => {
             line = line.trim();
-            if (!line) return null; // Skip empty lines
+            if (!line) return null;
 
-            // First, check for variable assignment (e.g., `variable = value`)
             const assignmentMatch = line.match(/^([a-zA-Z_]\w*)\s*=\s*(.*)$/);
             if (assignmentMatch) {
-                const varName = assignmentMatch[1];
-                const expression = assignmentMatch[2];
-                try {
-                    // Replace variables in the expression before calculating
-                    const sanitizedExpression = replaceVariables(expression);
-                    const result = calculate(sanitizedExpression);
-                    variables[varName] = result; // Store the result in the variables object
-                    return null; // Return null for assignments, as there's no output to display
-                } catch (e) {
-                    return `Error: Invalid assignment for '${varName}'.`;
-                }
+                const [, varName, expression] = assignmentMatch;
+                variables[varName] = calculate(replaceVariables(expression));
+                return null;
             }
-
-            // Next, check for date calculation pattern (e.g., "today + 90 days" or "today + y days")
+            
             const dateMatch = line.match(/^today\s*([+\-])\s*([a-zA-Z_]\w*|\d+)\s*(days?|weeks?|months?|years?)$/i);
             if (dateMatch) {
-                const operator = dateMatch[1];
-                const valuePart = dateMatch[2];
-                const unit = dateMatch[3].toLowerCase();
-                let value;
-                
-                if (isNaN(valuePart)) {
-                    // It's a variable name, look it up
-                    if (variables[valuePart] !== undefined && !isNaN(variables[valuePart])) {
-                        value = parseInt(variables[valuePart], 10);
-                    } else {
-                        return `Error: Variable '${valuePart}' is not a valid number.`;
-                    }
-                } else {
-                    // It's a number
-                    value = parseInt(valuePart, 10);
-                }
-                
+                const [, operator, valuePart, unit] = dateMatch;
+                const value = isNaN(valuePart) ? parseInt(variables[valuePart], 10) : parseInt(valuePart, 10);
+                if (isNaN(value)) return `Error: Invalid number.`;
+
                 const today = new Date();
-                
-                if (operator === '+') {
-                    if (unit.startsWith('day')) today.setDate(today.getDate() + value);
-                    else if (unit.startsWith('week')) today.setDate(today.getDate() + (value * 7));
-                    else if (unit.startsWith('month')) today.setMonth(today.getMonth() + value);
-                    else if (unit.startsWith('year')) today.setFullYear(today.getFullYear() + value);
-                } else if (operator === '-') {
-                    if (unit.startsWith('day')) today.setDate(today.getDate() - value);
-                    else if (unit.startsWith('week')) today.setDate(today.getDate() - (value * 7));
-                    else if (unit.startsWith('month')) today.setMonth(today.getMonth() - value);
-                    else if (unit.startsWith('year')) today.setFullYear(today.getFullYear() - value);
-                }
-                
+                const mult = operator === '+' ? 1 : -1;
+                const u = unit.toLowerCase();
+
+                if (u.startsWith('day')) today.setDate(today.getDate() + value * mult);
+                else if (u.startsWith('week')) today.setDate(today.getDate() + value * 7 * mult);
+                else if (u.startsWith('month')) today.setMonth(today.getMonth() + value * mult);
+                else if (u.startsWith('year')) today.setFullYear(today.getFullYear() + value * mult);
                 return today.toDateString();
             }
 
-            // New: Check for time calculation pattern (e.g., "14:00 + 4 hours")
-            const timeMatch = line.match(/^(\d{1,2}:\d{2})\s*([+\-])\s*(\d+)\s*(hours?|minutes?)$/i);
-            if (timeMatch) {
-                const timeString = timeMatch[1];
-                const operator = timeMatch[2];
-                const value = parseInt(timeMatch[3], 10);
-                const unit = timeMatch[4].toLowerCase();
+            return calculate(replaceVariables(line));
+        };
+        
+        // --- NEW: Central Highlighting Engine ---
+        const highlightText = (line, definedVars) => {
+            const escapeHtml = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const commentIndex = line.indexOf('//');
+            const codePart = commentIndex !== -1 ? line.substring(0, commentIndex) : line;
+            const commentPart = commentIndex !== -1 ? `<span class="comment">${escapeHtml(line.substring(commentIndex))}</span>` : '';
+            
+            const assignmentMatch = codePart.trim().match(/^([a-zA-Z_]\w*)\s*=/);
+            const varNameOnLine = assignmentMatch ? assignmentMatch[1] : null;
 
-                const [hours, minutes] = timeString.split(':').map(Number);
-                const date = new Date();
-                date.setHours(hours, minutes, 0, 0);
-
-                if (operator === '+') {
-                    if (unit.startsWith('hour')) date.setHours(date.getHours() + value);
-                    else if (unit.startsWith('minute')) date.setMinutes(date.getMinutes() + value);
-                } else if (operator === '-') {
-                    if (unit.startsWith('hour')) date.setHours(date.getHours() - value);
-                    else if (unit.startsWith('minute')) date.setMinutes(date.getMinutes() - value);
+            const tokens = codePart.split(/(\b[a-zA-Z_]\w*\b|=|\s+)/).filter(Boolean);
+            const processedCode = tokens.map(token => {
+                if (token.trim() === '') return token; // Preserve whitespace
+                if (token === '=') return `<span class="operator">${token}</span>`;
+                if (specialWords[token]) return `<span class="${specialWords[token]}">${escapeHtml(token)}</span>`;
+                
+                if (token === varNameOnLine) {
+                    return `<span class="${definedVars.has(token) ? 'variable-redefined' : 'variable-new'}">${escapeHtml(token)}</span>`;
                 }
-
-                // Format the time as HH:MM
-                const newHours = String(date.getHours()).padStart(2, '0');
-                const newMinutes = String(date.getMinutes()).padStart(2, '0');
-                return `${newHours}:${newMinutes}`;
-            }
-
-            // If it's not an assignment or a date calculation, try to evaluate it as a direct expression
-            try {
-                const sanitizedExpression = replaceVariables(line);
-                const result = calculate(sanitizedExpression);
-                if (result !== undefined) {
-                    return result;
+                if (definedVars.has(token)) {
+                    return `<span class="variable-used">${escapeHtml(token)}</span>`;
                 }
-            } catch (e) {
-                // If it fails, it might be an invalid expression or a comment
-                return null;
-            }
+                return escapeHtml(token);
+            }).join('');
 
-            return null; // For lines that don't produce a result (e.g., comments)
+            return processedCode + commentPart;
         };
 
-        /**
-         * Updates the output area and calls the highlighting function.
-         */
+        // --- Main Processing and UI Updates ---
         const processInput = () => {
-            // First, re-highlight the input area
-            highlightInput();
-
-            // Then, process the content for the output area
+            highlightInput(); // Update input screen first
+            
+            // Then, process for the output screen
             variables = {};
             const lines = inputArea.textContent.split('\n');
             let outputHTML = '';
             
-            const assignmentRegex = /^([a-zA-Z_]\w*)\s*=.*$/;
-            
             lines.forEach((line) => {
+                let currentLineHTML = '';
                 const trimmedLine = line.trim();
                 
                 if (!trimmedLine) {
-                    outputHTML += `<div class="h-6"></div>`;
-                    return;
-                }
-
-                let codePart = line;
-                let commentPart = null;
-                const commentIndex = line.indexOf('//');
-                if (commentIndex !== -1) {
-                    codePart = line.substring(0, commentIndex);
-                    commentPart = line.substring(commentIndex);
-                }
-
-                const trimmedCodePart = codePart.trim();
-                let result = null;
-                let isRedefined = false;
-
-                if (trimmedCodePart) {
-                    const assignmentMatch = trimmedCodePart.match(assignmentRegex);
-                    if (assignmentMatch) {
-                        const varName = assignmentMatch[1];
-                        if (variables.hasOwnProperty(varName)) {
-                            isRedefined = true;
-                        }
-                    }
-                    result = evaluateLine(trimmedCodePart);
-                }
-
-                // Now build the output HTML based on the parts
-                if (result !== null && result !== undefined) {
-                    // It's a line with a result. The result number is now a bright green.
-                    outputHTML += `<div class="flex items-start">
-                                      <span class="mr-4 text-blue-400 font-bold">></span>
-                                      <span class="flex-1">${trimmedCodePart}</span>
-                                      <span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${result}</span></span>`;
-                    if (commentPart) {
-                        outputHTML += `<span class="text-yellow-400 ml-4">${commentPart}</span>`;
-                    }
-                    outputHTML += `</div>`;
-                } else if (assignmentRegex.test(trimmedCodePart)) {
-                    // It's a variable assignment
-                    const outputClass = isRedefined ? 'text-red-400' : 'text-blue-400';
-                    outputHTML += `<div class="flex items-start">
-                                      <span class="mr-4 ${outputClass} font-bold">></span>
-                                      <span class="flex-1 ${outputClass}">${trimmedCodePart}</span>`;
-                    if (commentPart) {
-                        outputHTML += `<span class="text-yellow-400 ml-4">${commentPart}</span>`;
-                    }
-                    outputHTML += `</div>`;
-                } else if (commentPart) {
-                    // It's a pure comment line
-                    outputHTML += `<div class="flex items-start">
-                                      <span class="mr-4 text-yellow-400 font-bold">//</span>
-                                      <span class="flex-1 text-yellow-400">${commentPart.substring(2)}</span>
-                                  </div>`;
+                    currentLineHTML = `<div class="h-6"></div>`;
                 } else {
-                     // It's a non-comment, non-evaluative line
-                     outputHTML += `<div class="flex items-start">
-                                      <span class="mr-4 text-gray-500 font-bold">></span>
-                                      <span class="flex-1 text-gray-500">${line}</span>
-                                  </div>`;
+                    const lineVars = new Set(Object.keys(variables));
+                    const highlightedLine = highlightText(line, lineVars);
+                    const result = evaluateLine(line); // This updates the global 'variables' object
+                    
+                    if (result !== null && result !== undefined) {
+                        currentLineHTML = `<div class="flex items-start output-highlight">
+                            <span class="mr-4 text-blue-400 font-bold">></span>
+                            <span class="flex-1">${highlightedLine}</span>
+                            <span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${result}</span></span>
+                        </div>`;
+                    } else {
+                         currentLineHTML = `<div class="flex items-start output-highlight">
+                            <span class="mr-4 text-gray-400 font-bold">></span>
+                            <span class="flex-1">${highlightedLine}</span>
+                        </div>`;
+                    }
                 }
+                outputHTML += currentLineHTML;
             });
             
             outputArea.innerHTML = outputHTML || '<div class="text-gray-400">Your results will appear here in real-time.</div>';
         };
 
-        /**
-         * Handles syntax highlighting for the input area using a token-based approach
-         * and preserves the cursor position correctly.
-         */
         const highlightInput = () => {
-            // Step 1: Save the current cursor position.
-            let savedOffset = 0;
             const selection = window.getSelection();
-            if (selection.rangeCount > 0) {
-                const range = selection.getRangeAt(0);
-                const preCaretRange = range.cloneRange();
-                preCaretRange.selectNodeContents(inputArea);
-                preCaretRange.setEnd(range.startContainer, range.startOffset);
-                savedOffset = preCaretRange.toString().length;
-            }
+            const savedOffset = (selection.rangeCount > 0) ? (() => {
+                const range = selection.getRangeAt(0).cloneRange();
+                range.selectNodeContents(inputArea);
+                range.setEnd(selection.getRangeAt(0).startContainer, selection.getRangeAt(0).startOffset);
+                return range.toString().length;
+            })() : 0;
             
-            // Step 2: Generate the new HTML with syntax highlighting.
-            const content = inputArea.textContent;
             const definedVariables = new Set();
-            const lines = content.split('\n');
-            const assignmentRegex = /^([a-zA-Z_]\w*)\s*=/;
-            const escapeHtml = (text) => text.replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
-
+            const lines = inputArea.textContent.split('\n');
             const highlightedLines = lines.map(line => {
-                const commentIndex = line.indexOf('//');
-                const codePart = commentIndex !== -1 ? line.substring(0, commentIndex) : line;
-                const commentPart = commentIndex !== -1 ? `<span class="comment">${escapeHtml(line.substring(commentIndex))}</span>` : '';
-
-                let processedCode = '';
-                const assignmentMatch = codePart.trim().match(assignmentRegex);
-                const tokens = codePart.split(/(\b[a-zA-Z_]\w*\b|=|\s+)/).filter(Boolean);
-
+                const highlighted = highlightText(line, definedVariables);
+                const assignmentMatch = line.trim().match(/^([a-zA-Z_]\w*)\s*=/);
                 if (assignmentMatch) {
-                    const varName = assignmentMatch[1];
-                    const varClass = definedVariables.has(varName) ? 'variable-redefined' : 'variable-new';
-                    definedVariables.add(varName);
-                    let isVarFound = false;
-
-                    tokens.forEach(token => {
-                        if (!isVarFound && token === varName) {
-                            processedCode += `<span class="${varClass}">${escapeHtml(token)}</span>`;
-                            isVarFound = true;
-                        } else if (specialWords[token]) {
-                            processedCode += `<span class="${specialWords[token]}">${escapeHtml(token)}</span>`;
-                        } else if (token === '=') {
-                            processedCode += `<span class="operator">${token}</span>`;
-                        } else {
-                            processedCode += escapeHtml(token);
-                        }
-                    });
-                } else {
-                    tokens.forEach(token => {
-                        if (specialWords[token]) {
-                            processedCode += `<span class="${specialWords[token]}">${escapeHtml(token)}</span>`;
-                        } else if (token === '=') {
-                            processedCode += `<span class="operator">${token}</span>`;
-                        } else {
-                            processedCode += escapeHtml(token);
-                        }
-                    });
+                    definedVariables.add(assignmentMatch[1]);
                 }
-                return processedCode + commentPart;
+                return highlighted;
             });
-            
-            const highlightedHtml = highlightedLines.join('\n');
-            inputArea.innerHTML = highlightedHtml;
 
-            // Step 3: Restore the cursor.
+            inputArea.innerHTML = highlightedLines.join('\n');
+            
+            // Restore cursor
             let charCount = 0;
             const newRange = document.createRange();
             const treeWalker = document.createTreeWalker(inputArea, NodeFilter.SHOW_TEXT);
             let node;
-
             while (node = treeWalker.nextNode()) {
-                const nextCharCount = charCount + node.length;
-                if (nextCharCount >= savedOffset) {
+                if (charCount + node.length >= savedOffset) {
                     newRange.setStart(node, savedOffset - charCount);
                     newRange.collapse(true);
                     selection.removeAllRanges();
                     selection.addRange(newRange);
                     return;
                 }
-                charCount = nextCharCount;
+                charCount += node.length;
             }
-             // Fallback for when the cursor is at the very end
             newRange.selectNodeContents(inputArea);
             newRange.collapse(false);
             selection.removeAllRanges();
             selection.addRange(newRange);
         };
 
-
-        // --- Wake Lock Functionality ---
-
-        /**
-         * Attempts to request a screen wake lock.
-         */
-        const requestWakeLock = async () => {
-            if ('wakeLock' in navigator) {
-                if (wakeLock !== null) {
-                    return;
-                }
-                try {
-                    wakeLock = await navigator.wakeLock.request('screen');
-                    wakeLock.addEventListener('release', () => {
-                        console.log('Wake lock was released');
-                        wakeLock = null; 
-                        if (noSleepToggle.checked) {
-                            noSleepToggle.checked = false;
-                            showMessage('Screen wake lock was released.');
-                        }
-                    });
-                    showMessage('Screen wake lock is active.');
-                } catch (err) {
-                    console.error(`${err.name}, ${err.message}`);
-                    if (err.name === 'NotAllowedError') {
-                        showMessage('Failed to enable "No sleep mode". This feature may be blocked by your browser\'s security policy.');
-                    } else {
-                        showMessage(`Error: Could not activate "No sleep mode". Reason: ${err.message}`);
-                    }
-                    noSleepToggle.checked = false;
-                }
-            } else {
-                 showMessage('Wake Lock API not supported in this browser.');
-                 noSleepToggle.checked = false;
+        // --- Autocomplete ---
+        function updateAutocompletePopup() {
+            if (!autocompleteState.active || autocompleteState.suggestions.length === 0) {
+                autocompletePopup.classList.add('hidden');
+                return;
             }
-        };
+            autocompletePopup.innerHTML = autocompleteState.suggestions.map((s, i) =>
+                `<div class="autocomplete-item ${i === autocompleteState.selectedIndex ? 'selected' : ''}" data-index="${i}">${s}</div>`
+            ).join('');
 
-        /**
-         * Releases the screen wake lock.
-         */
-        const releaseWakeLock = () => {
-            if (wakeLock !== null) {
-                wakeLock.release().then(() => {
-                    wakeLock = null;
-                    showMessage('Screen wake lock is released.');
-                });
-            }
-        };
+            const range = window.getSelection().getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            const inputRect = inputArea.getBoundingClientRect();
+            autocompletePopup.style.left = `${rect.left - inputRect.left}px`;
+            autocompletePopup.style.top = `${rect.bottom - inputRect.top + 5}px`;
+            autocompletePopup.classList.remove('hidden');
+        }
 
-        // --- Event Listeners ---
-
-        // Event listener for real-time processing as the user types
-        inputArea.addEventListener('input', processInput);
+        function closeAutocomplete() { autocompleteState.active = false; autocompletePopup.classList.add('hidden'); }
         
-        // -- THIS IS THE FIX --
-        // A robust listener to correctly handle the 'Enter' key.
-        inputArea.addEventListener('keydown', (event) => {
-            if (event.key === 'Enter') {
-                event.preventDefault(); // Prevent default (and messy) browser behavior
+        function handleAutocomplete() {
+            const selection = window.getSelection();
+            if (!selection.rangeCount) return closeAutocomplete();
 
+            const textBeforeCursor = selection.getRangeAt(0).startContainer.textContent.substring(0, selection.getRangeAt(0).startOffset);
+            const wordMatch = textBeforeCursor.match(/(\w+)$/);
+
+            if (!wordMatch) return closeAutocomplete();
+
+            const currentWord = wordMatch[1];
+            autocompleteState.wordStartIndex = textBeforeCursor.length - currentWord.length;
+
+            const suggestions = [...allAutocompleteKeywords()].filter(kw => kw.startsWith(currentWord) && kw !== currentWord);
+
+            if (suggestions.length > 0) {
+                autocompleteState.active = true;
+                autocompleteState.suggestions = suggestions;
+                autocompleteState.selectedIndex = 0;
+            } else { closeAutocomplete(); }
+            updateAutocompletePopup();
+        }
+
+        function acceptSuggestion(suggestion) {
+            const selection = window.getSelection();
+            const range = selection.getRangeAt(0);
+            const node = range.startContainer;
+
+            const textBefore = node.textContent.substring(0, autocompleteState.wordStartIndex);
+            const textAfter = node.textContent.substring(range.startOffset);
+            node.textContent = `${textBefore}${suggestion} ${textAfter}`;
+            
+            range.setStart(node, (textBefore + suggestion + ' ').length);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+            
+            closeAutocomplete();
+            processInput();
+        }
+        
+        // --- Event Listeners ---
+        inputArea.addEventListener('input', () => {
+            processInput();
+            handleAutocomplete();
+        });
+        
+        inputArea.addEventListener('keydown', (event) => {
+            if (autocompleteState.active) {
+                if (['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(event.key)) event.preventDefault();
+                
+                if (event.key === 'ArrowDown') autocompleteState.selectedIndex = (autocompleteState.selectedIndex + 1) % autocompleteState.suggestions.length;
+                else if (event.key === 'ArrowUp') autocompleteState.selectedIndex = (autocompleteState.selectedIndex - 1 + autocompleteState.suggestions.length) % autocompleteState.suggestions.length;
+                else if (event.key === 'Enter' || event.key === 'Tab') acceptSuggestion(autocompleteState.suggestions[autocompleteState.selectedIndex]);
+                else if (event.key === 'Escape') closeAutocomplete();
+                
+                updateAutocompletePopup();
+                return;
+            }
+            
+            if (event.key === 'Enter') {
+                event.preventDefault();
                 const selection = window.getSelection();
                 if (!selection.rangeCount) return;
-
                 const range = selection.getRangeAt(0);
-                range.deleteContents(); // Clear selection if any
-
+                range.deleteContents();
                 const newlineNode = document.createTextNode('\n');
                 range.insertNode(newlineNode);
-
-                // Move cursor to after the new line
                 range.setStartAfter(newlineNode);
                 range.collapse(true);
-
                 selection.removeAllRanges();
                 selection.addRange(range);
-
-                // The 'input' event will now fire automatically due to the DOM change,
-                // which correctly triggers processInput().
             }
-        });
-
-        // Event listener for the erase button
-        eraseButton.addEventListener('click', () => {
-            inputArea.textContent = '';
-            processInput();
-            showMessage('Calculator cleared!');
         });
         
-        // Event listeners for save buttons
-        saveButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const slot = button.id.split('-')[1];
-                const key = `instacalc_slot_${slot}`;
-                const currentValue = inputArea.textContent;
+        document.addEventListener('click', (e) => !autocompletePopup.contains(e.target) && closeAutocomplete());
+        autocompletePopup.addEventListener('click', (e) => e.target.closest('.autocomplete-item') && acceptSuggestion(autocompleteState.suggestions[parseInt(e.target.dataset.index)]));
+        eraseButton.addEventListener('click', () => { inputArea.textContent = ''; processInput(); showMessage('Calculator cleared!'); });
 
-                if (localStorage.getItem(key)) {
-                    confirmModal.classList.remove('hidden');
-                    confirmModal.classList.add('flex');
-                    
-                    confirmOk.onclick = () => {
-                        localStorage.setItem(key, currentValue);
-                        confirmModal.classList.add('hidden');
-                        confirmModal.classList.remove('flex');
-                        showMessage(`Calculation saved to slot ${slot}!`);
-                    };
-                    confirmCancel.onclick = () => {
-                        confirmModal.classList.add('hidden');
-                        confirmModal.classList.remove('flex');
-                    };
-                } else {
-                    localStorage.setItem(key, currentValue);
-                    showMessage(`Calculation saved to slot ${slot}!`);
-                }
-            });
+        $$('#save-buttons button').forEach((button, index) => button.addEventListener('click', () => {
+            const key = `instacalc_slot_${index + 1}`;
+            if (localStorage.getItem(key)) {
+                confirmModal.classList.add('flex'); confirmModal.classList.remove('hidden');
+                $('#confirm-ok').onclick = () => { localStorage.setItem(key, inputArea.textContent); confirmModal.classList.add('hidden'); showMessage(`Saved to slot ${index + 1}!`); };
+                $('#confirm-cancel').onclick = () => confirmModal.classList.add('hidden');
+            } else { localStorage.setItem(key, inputArea.textContent); showMessage(`Saved to slot ${index + 1}!`); }
+        }));
+        $$('#load-buttons button').forEach((button, index) => button.addEventListener('click', () => {
+            const savedValue = localStorage.getItem(`instacalc_slot_${index + 1}`);
+            if (savedValue) { inputArea.textContent = savedValue; processInput(); showMessage(`Loaded from slot ${index + 1}!`); }
+            else { showMessage(`Slot ${index + 1} is empty.`); }
+        }));
+        
+        $('#noSleepToggle').addEventListener('change', async (e) => {
+            if (e.target.checked) {
+                if ('wakeLock' in navigator) {
+                    try {
+                        wakeLock = await navigator.wakeLock.request('screen');
+                        wakeLock.addEventListener('release', () => { if(e.target.checked) { e.target.checked = false; showMessage('Wake lock released.'); }});
+                        showMessage('Screen wake lock active.');
+                    } catch (err) { showMessage(`Error: ${err.message}`); e.target.checked = false; }
+                } else { showMessage('Wake Lock API not supported.'); e.target.checked = false; }
+            } else if (wakeLock) { wakeLock.release(); wakeLock = null; }
         });
-
-        // Event listeners for load buttons
-        loadButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const slot = button.id.split('-')[1];
-                const key = `instacalc_slot_${slot}`;
-                const savedValue = localStorage.getItem(key);
-
-                if (savedValue) {
-                    inputArea.textContent = savedValue;
-                    processInput();
-                    showMessage(`Calculation loaded from slot ${slot}!`);
-                } else {
-                    showMessage(`Slot ${slot} is empty.`);
-                }
-            });
-        });
-
-        // Event listener for the new no-sleep toggle
-        noSleepToggle.addEventListener('change', () => {
-            if (noSleepToggle.checked) {
-                requestWakeLock();
-            } else {
-                releaseWakeLock();
-            }
-        });
-
-        // Re-request wake lock if the page becomes visible and the toggle is still on
-        document.addEventListener('visibilitychange', () => {
-            if (wakeLock !== null && document.visibilityState === 'visible' && noSleepToggle.checked) {
-                requestWakeLock();
-            }
-        });
-
-        // Initial processing on page load
+        
         window.addEventListener('DOMContentLoaded', () => {
-             // Set a default value and trigger the initial calculation
-            inputArea.textContent = `// Welcome to Insta-Clone!
-// Now supports date, time, percentage, and unit calculations.
+            inputArea.textContent = `// Variables are orange when used!
+rent = 1200
+utilities = 250
+my_share = (rent + utilities) / 2
 
-// Date calculations with variables
-y = 20
-today + y days
-
-// Expanded date calculations (weeks, months, years)
+// Try typing 't' or 'u' for autocomplete.
+// 'today', 'rent', 'utilities', etc.
 today + 3 weeks
-today - 6 months
-today + 2 years
-
-// Time calculations
-14:00 + 4 hours
-
-// This is an example of a commented line
-flight = 33 // per person
-flight = 50 // Re-assigning the value
-
-// Use the buttons at the bottom of the page to save and load your work.
-// Use the new "No sleep mode" toggle to prevent your screen from sleeping.
-
-// Percentage calculations
-340 + 15%
-
-// Unit conversions
-23 usd to eur
-100 m to ft
-
-// You can use conversions with variables too
-distance_m = 50
-distance_m to cm
-
-// The result of the last line will be displayed
-25 gbp to usd`;
+100 usd to gbp`;
             processInput();
         });
 

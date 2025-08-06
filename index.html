@@ -37,7 +37,7 @@
             outline: none;
             resize: none;
             line-height: 1.5;
-            padding: 1.5rem;
+            padding: 1rem; /* Adjusted padding for mobile */
             color: #d1d5db; /* Light gray text */
             background-color: #111827; /* Dark background */
             white-space: pre-wrap; /* Preserve whitespace and line breaks */
@@ -98,27 +98,25 @@
         input:checked + .toggle-slider:before { transform: translateX(24px); }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center h-screen p-4">
+<body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
     <div class="w-full max-w-4xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row flex-1 min-h-0">
         <!-- Left Panel: Input Area -->
-        <div class="flex-1 flex flex-col p-6 md:p-8">
-            <!-- --- THIS IS THE MODIFIED HEADER FOR THE LEFT PANEL --- -->
+        <div class="flex-1 flex flex-col p-4 md:p-8 h-[45vh] md:h-auto">
             <div class="flex justify-between items-center mb-2 h-12">
                 <h2 class="text-2xl font-bold text-white">Insta-Clone</h2>
-                <button id="eraseButton" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg shadow-lg hover:bg-red-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50">Erase</button>
+                <button id="eraseButton" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg shadow-lg hover:bg-red-700">Erase</button>
             </div>
             
             <div class="relative flex-1 min-h-0">
-                <div id="inputArea" contenteditable="true" class="w-full h-full rounded-xl bg-gray-900 text-gray-200 font-mono text-lg transition-all duration-300 focus:ring-4 focus:ring-blue-500/50"></div>
+                <div id="inputArea" contenteditable="true" class="w-full h-full rounded-xl bg-gray-900 text-gray-200 font-mono text-base md:text-lg"></div>
                 <div id="autocomplete-popup" class="hidden"></div>
             </div>
         </div>
         <!-- Right Panel: Output Area -->
-        <div class="flex-1 flex flex-col p-6 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30">
-            <!-- --- THIS IS THE MODIFIED HEADER FOR THE RIGHT PANEL --- -->
+        <div class="flex-1 flex flex-col p-4 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30 h-[45vh] md:h-auto">
             <div class="flex justify-between items-center mb-2 h-12">
                 <h2 class="text-2xl font-bold text-white">Results</h2>
-                <div class="flex items-center space-x-4">
+                <div class="flex items-center space-x-3">
                     <div class="flex items-center space-x-2">
                         <label class="text-gray-400 text-sm">No sleep</label>
                         <label class="toggle-switch-container">
@@ -135,21 +133,21 @@
                     </div>
                 </div>
             </div>
-            <div id="outputArea" class="relative flex-1 bg-gray-900 rounded-xl p-6 overflow-y-auto text-gray-200 font-mono text-lg leading-relaxed">
+            <div id="outputArea" class="relative flex-1 bg-gray-900 rounded-xl p-4 overflow-y-auto text-gray-200 font-mono text-base md:text-lg">
                 <div class="text-gray-400">Your results will appear here in real-time.</div>
             </div>
         </div>
     </div>
 
     <!-- Saved Calculations Section -->
-    <div class="w-full max-w-4xl mt-4 p-6 md:p-8 bg-gray-800 rounded-2xl shadow-2xl">
+    <div class="w-full max-w-4xl mt-4 p-4 md:p-6 bg-gray-800 rounded-2xl shadow-2xl">
         <h3 class="text-lg font-semibold text-white mb-2">Saved Calculations (3 slots)</h3>
-        <div id="save-buttons" class="grid grid-cols-3 gap-2">
+        <div id="save-buttons" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 1</button>
             <button class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 2</button>
             <button class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 3</button>
         </div>
-        <div id="load-buttons" class="grid grid-cols-3 gap-2 mt-2">
+        <div id="load-buttons" class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
             <button class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 1</button>
             <button class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 2</button>
             <button class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 3</button>
@@ -157,8 +155,8 @@
     </div>
 
     <!-- Confirmation & Message Modals -->
-    <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70">
-        <div class="bg-gray-800 rounded-xl p-6 w-96 shadow-2xl border border-gray-700">
+    <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
+        <div class="bg-gray-800 rounded-xl p-6 w-full max-w-sm shadow-2xl border border-gray-700">
             <h4 class="text-xl font-bold mb-4">Overwrite Calculation?</h4>
             <p id="confirm-message" class="text-gray-400 mb-6">This slot already has a saved calculation. Do you want to replace it?</p>
             <div class="flex justify-end gap-4">
@@ -544,7 +542,7 @@
         });
         
         window.addEventListener('DOMContentLoaded', () => {
-            inputArea.textContent = `// UI is now perfectly aligned!
+            inputArea.textContent = `// UI is now aligned and mobile-friendly!
 total = 700
 total`;
             processInput();

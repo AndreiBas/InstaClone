@@ -51,7 +51,6 @@
         #inputArea .variable-redefined, .output-highlight .variable-redefined {
             color: #f87171; /* Red */
         }
-        /* -- NEW STYLE -- */
         #inputArea .variable-used, .output-highlight .variable-used {
             color: #fb923c; /* Orange-400 */
         }
@@ -99,12 +98,13 @@
         input:checked + .toggle-slider:before { transform: translateX(24px); }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center justify-center min-h-screen p-4">
-    <div class="w-full max-w-4xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row h-[80vh]">
+<body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center h-screen p-4">
+    <div class="w-full max-w-4xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row flex-1 min-h-0">
         <!-- Left Panel: Input Area -->
         <div class="flex-1 flex flex-col p-6 md:p-8">
-            <div class="flex justify-between items-center mb-2">
-                <h1 class="text-3xl font-bold text-white">Insta-Clone</h1>
+            <!-- --- THIS IS THE MODIFIED HEADER FOR THE LEFT PANEL --- -->
+            <div class="flex justify-between items-center mb-2 h-12">
+                <h2 class="text-2xl font-bold text-white">Insta-Clone</h2>
                 <button id="eraseButton" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg shadow-lg hover:bg-red-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-opacity-50">Erase</button>
             </div>
             
@@ -115,14 +115,24 @@
         </div>
         <!-- Right Panel: Output Area -->
         <div class="flex-1 flex flex-col p-6 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30">
-            <div class="flex justify-between items-center mb-6">
+            <!-- --- THIS IS THE MODIFIED HEADER FOR THE RIGHT PANEL --- -->
+            <div class="flex justify-between items-center mb-2 h-12">
                 <h2 class="text-2xl font-bold text-white">Results</h2>
-                <div class="flex items-center space-x-2">
-                    <label class="text-gray-400">No sleep mode</label>
-                    <label class="toggle-switch-container">
-                        <input type="checkbox" id="noSleepToggle">
-                        <span class="toggle-slider"></span>
-                    </label>
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center space-x-2">
+                        <label class="text-gray-400 text-sm">No sleep</label>
+                        <label class="toggle-switch-container">
+                            <input type="checkbox" id="noSleepToggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        <label class="text-gray-400 text-sm">Round</label>
+                        <label class="toggle-switch-container">
+                            <input type="checkbox" id="roundingToggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                 </div>
             </div>
             <div id="outputArea" class="relative flex-1 bg-gray-900 rounded-xl p-6 overflow-y-auto text-gray-200 font-mono text-lg leading-relaxed">
@@ -132,7 +142,7 @@
     </div>
 
     <!-- Saved Calculations Section -->
-    <div class="w-full max-w-4xl mt-8 p-6 md:p-8 bg-gray-800 rounded-2xl shadow-2xl">
+    <div class="w-full max-w-4xl mt-4 p-6 md:p-8 bg-gray-800 rounded-2xl shadow-2xl">
         <h3 class="text-lg font-semibold text-white mb-2">Saved Calculations (3 slots)</h3>
         <div id="save-buttons" class="grid grid-cols-3 gap-2">
             <button class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 1</button>
@@ -171,6 +181,8 @@
         const autocompletePopup = $('#autocomplete-popup');
         const confirmModal = $('#confirm-modal');
         const messageBox = $('#message-box');
+        const roundingToggle = $('#roundingToggle');
+        const noSleepToggle = $('#noSleepToggle');
 
         let variables = {};
         let wakeLock = null;
@@ -189,7 +201,21 @@
             'years': 'unit', 'year': 'unit', 'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
         };
 
-        const allAutocompleteKeywords = () => new Set([...Object.keys(specialWords), ...Object.keys(variables)]);
+        const getAutocompleteKeywords = (textContent) => {
+            const orderedVars = [];
+            textContent.split('\n').forEach(line => {
+                const match = line.trim().match(/^([a-zA-Z_]\w*)\s*=/);
+                if (match) {
+                    const varName = match[1];
+                    const existingIndex = orderedVars.indexOf(varName);
+                    if (existingIndex > -1) orderedVars.splice(existingIndex, 1);
+                    orderedVars.push(varName);
+                }
+            });
+            const newestVarsFirst = orderedVars.reverse();
+            const specialKeywordsList = Object.keys(specialWords);
+            return [...newestVarsFirst, ...specialKeywordsList.filter(k => !orderedVars.includes(k))];
+        };
         
         // --- Helper Functions ---
 
@@ -259,7 +285,16 @@
             return calculate(replaceVariables(line));
         };
         
-        // --- NEW: Central Highlighting Engine ---
+        const formatResult = (result) => {
+            if (typeof result === 'number' && roundingToggle.checked) {
+                if (!Number.isInteger(result)) {
+                    return result.toFixed(2);
+                }
+            }
+            return result;
+        };
+
+        // --- Central Highlighting Engine ---
         const highlightText = (line, definedVars) => {
             const escapeHtml = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
             const commentIndex = line.indexOf('//');
@@ -271,7 +306,7 @@
 
             const tokens = codePart.split(/(\b[a-zA-Z_]\w*\b|=|\s+)/).filter(Boolean);
             const processedCode = tokens.map(token => {
-                if (token.trim() === '') return token; // Preserve whitespace
+                if (token.trim() === '') return token;
                 if (token === '=') return `<span class="operator">${token}</span>`;
                 if (specialWords[token]) return `<span class="${specialWords[token]}">${escapeHtml(token)}</span>`;
                 
@@ -289,9 +324,8 @@
 
         // --- Main Processing and UI Updates ---
         const processInput = () => {
-            highlightInput(); // Update input screen first
+            highlightInput();
             
-            // Then, process for the output screen
             variables = {};
             const lines = inputArea.textContent.split('\n');
             let outputHTML = '';
@@ -305,13 +339,14 @@
                 } else {
                     const lineVars = new Set(Object.keys(variables));
                     const highlightedLine = highlightText(line, lineVars);
-                    const result = evaluateLine(line); // This updates the global 'variables' object
+                    const result = evaluateLine(line);
                     
                     if (result !== null && result !== undefined) {
+                        const formattedResult = formatResult(result);
                         currentLineHTML = `<div class="flex items-start output-highlight">
                             <span class="mr-4 text-blue-400 font-bold">></span>
                             <span class="flex-1">${highlightedLine}</span>
-                            <span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${result}</span></span>
+                            <span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formattedResult}</span></span>
                         </div>`;
                     } else {
                          currentLineHTML = `<div class="flex items-start output-highlight">
@@ -340,15 +375,12 @@
             const highlightedLines = lines.map(line => {
                 const highlighted = highlightText(line, definedVariables);
                 const assignmentMatch = line.trim().match(/^([a-zA-Z_]\w*)\s*=/);
-                if (assignmentMatch) {
-                    definedVariables.add(assignmentMatch[1]);
-                }
+                if (assignmentMatch) definedVariables.add(assignmentMatch[1]);
                 return highlighted;
             });
 
             inputArea.innerHTML = highlightedLines.join('\n');
             
-            // Restore cursor
             let charCount = 0;
             const newRange = document.createRange();
             const treeWalker = document.createTreeWalker(inputArea, NodeFilter.SHOW_TEXT);
@@ -393,15 +425,20 @@
             const selection = window.getSelection();
             if (!selection.rangeCount) return closeAutocomplete();
 
-            const textBeforeCursor = selection.getRangeAt(0).startContainer.textContent.substring(0, selection.getRangeAt(0).startOffset);
-            const wordMatch = textBeforeCursor.match(/(\w+)$/);
+            const range = selection.getRangeAt(0);
+            const textBeforeCursor = range.startContainer.textContent.substring(0, range.startOffset);
+            
+            if (/\W$/.test(textBeforeCursor) || textBeforeCursor.length === 0) {
+                return closeAutocomplete();
+            }
 
+            const wordMatch = textBeforeCursor.match(/(\w+)$/);
             if (!wordMatch) return closeAutocomplete();
 
             const currentWord = wordMatch[1];
             autocompleteState.wordStartIndex = textBeforeCursor.length - currentWord.length;
-
-            const suggestions = [...allAutocompleteKeywords()].filter(kw => kw.startsWith(currentWord) && kw !== currentWord);
+            const suggestions = getAutocompleteKeywords(inputArea.textContent)
+                .filter(kw => kw.startsWith(currentWord) && kw !== currentWord);
 
             if (suggestions.length > 0) {
                 autocompleteState.active = true;
@@ -426,42 +463,55 @@
             selection.addRange(range);
             
             closeAutocomplete();
-            processInput();
+            inputArea.dispatchEvent(new Event('input', { bubbles: true }));
         }
         
         // --- Event Listeners ---
-        inputArea.addEventListener('input', () => {
-            processInput();
-            handleAutocomplete();
-        });
-        
         inputArea.addEventListener('keydown', (event) => {
             if (autocompleteState.active) {
-                if (['ArrowDown', 'ArrowUp', 'Enter', 'Tab', 'Escape'].includes(event.key)) event.preventDefault();
-                
-                if (event.key === 'ArrowDown') autocompleteState.selectedIndex = (autocompleteState.selectedIndex + 1) % autocompleteState.suggestions.length;
-                else if (event.key === 'ArrowUp') autocompleteState.selectedIndex = (autocompleteState.selectedIndex - 1 + autocompleteState.suggestions.length) % autocompleteState.suggestions.length;
-                else if (event.key === 'Enter' || event.key === 'Tab') acceptSuggestion(autocompleteState.suggestions[autocompleteState.selectedIndex]);
-                else if (event.key === 'Escape') closeAutocomplete();
-                
-                updateAutocompletePopup();
-                return;
+                if (['ArrowDown', 'ArrowUp', 'Escape', 'Enter', 'Tab'].includes(event.key)) {
+                    event.preventDefault();
+                    if (event.key === 'ArrowDown') {
+                        autocompleteState.selectedIndex = (autocompleteState.selectedIndex + 1) % autocompleteState.suggestions.length;
+                        updateAutocompletePopup();
+                    } else if (event.key === 'ArrowUp') {
+                        autocompleteState.selectedIndex = (autocompleteState.selectedIndex - 1 + autocompleteState.suggestions.length) % autocompleteState.suggestions.length;
+                        updateAutocompletePopup();
+                    } else if (event.key === 'Escape') {
+                        closeAutocomplete();
+                    } else if (event.key === 'Enter' || event.key === 'Tab') {
+                        acceptSuggestion(autocompleteState.suggestions[autocompleteState.selectedIndex]);
+                    }
+                    return;
+                }
             }
             
             if (event.key === 'Enter') {
                 event.preventDefault();
                 const selection = window.getSelection();
                 if (!selection.rangeCount) return;
+                
                 const range = selection.getRangeAt(0);
                 range.deleteContents();
+                
                 const newlineNode = document.createTextNode('\n');
                 range.insertNode(newlineNode);
+                
                 range.setStartAfter(newlineNode);
                 range.collapse(true);
                 selection.removeAllRanges();
                 selection.addRange(range);
+                
+                inputArea.dispatchEvent(new Event('input', { bubbles: true }));
             }
         });
+
+        inputArea.addEventListener('input', () => {
+            processInput();
+            handleAutocomplete();
+        });
+        
+        roundingToggle.addEventListener('change', processInput);
         
         document.addEventListener('click', (e) => !autocompletePopup.contains(e.target) && closeAutocomplete());
         autocompletePopup.addEventListener('click', (e) => e.target.closest('.autocomplete-item') && acceptSuggestion(autocompleteState.suggestions[parseInt(e.target.dataset.index)]));
@@ -481,7 +531,7 @@
             else { showMessage(`Slot ${index + 1} is empty.`); }
         }));
         
-        $('#noSleepToggle').addEventListener('change', async (e) => {
+        noSleepToggle.addEventListener('change', async (e) => {
             if (e.target.checked) {
                 if ('wakeLock' in navigator) {
                     try {
@@ -494,15 +544,9 @@
         });
         
         window.addEventListener('DOMContentLoaded', () => {
-            inputArea.textContent = `// Variables are orange when used!
-rent = 1200
-utilities = 250
-my_share = (rent + utilities) / 2
-
-// Try typing 't' or 'u' for autocomplete.
-// 'today', 'rent', 'utilities', etc.
-today + 3 weeks
-100 usd to gbp`;
+            inputArea.textContent = `// UI is now perfectly aligned!
+total = 700
+total`;
             processInput();
         });
 

@@ -37,7 +37,7 @@
             outline: none;
             resize: none;
             line-height: 1.5;
-            padding: 1rem; /* Adjusted padding for mobile */
+            padding: 1rem;
             color: #d1d5db; /* Light gray text */
             background-color: #111827; /* Dark background */
             white-space: pre-wrap; /* Preserve whitespace and line breaks */
@@ -98,7 +98,7 @@
         input:checked + .toggle-slider:before { transform: translateX(24px); }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
+<body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center h-screen p-2 sm:p-4">
     <div class="w-full max-w-4xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row flex-1 min-h-0">
         <!-- Left Panel: Input Area -->
         <div class="flex-1 flex flex-col p-4 md:p-8 h-[45vh] md:h-auto">
@@ -142,23 +142,26 @@
     <!-- Saved Calculations Section -->
     <div class="w-full max-w-4xl mt-4 p-4 md:p-6 bg-gray-800 rounded-2xl shadow-2xl">
         <h3 class="text-lg font-semibold text-white mb-2">Saved Calculations (3 slots)</h3>
-        <div id="save-buttons" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 1</button>
-            <button class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 2</button>
-            <button class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 3</button>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <button id="save-1" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 1</button>
+            <button id="save-2" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 2</button>
+            <button id="save-3" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 3</button>
         </div>
-        <div id="load-buttons" class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
-            <button class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 1</button>
-            <button class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 2</button>
-            <button class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 3</button>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
+            <button id="load-1" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 1</button>
+            <button id="load-2" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 2</button>
+            <button id="load-3" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 3</button>
+        </div>
+        <div class="mt-4 text-center">
+            <button id="helpButton" class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg shadow-md hover:bg-purple-700 w-full sm:w-auto">Show Help</button>
         </div>
     </div>
 
-    <!-- Confirmation & Message Modals -->
+    <!-- Modals -->
     <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
         <div class="bg-gray-800 rounded-xl p-6 w-full max-w-sm shadow-2xl border border-gray-700">
             <h4 class="text-xl font-bold mb-4">Overwrite Calculation?</h4>
-            <p id="confirm-message" class="text-gray-400 mb-6">This slot already has a saved calculation. Do you want to replace it?</p>
+            <p class="text-gray-400 mb-6">This slot already has a saved calculation. Do you want to replace it?</p>
             <div class="flex justify-end gap-4">
                 <button id="confirm-cancel" class="bg-gray-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-gray-700">Cancel</button>
                 <button id="confirm-ok" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-700">Overwrite</button>
@@ -167,12 +170,21 @@
     </div>
     <div id="message-box" class="fixed bottom-4 left-1/2 -translate-x-1/2 p-4 bg-gray-800 text-white rounded-lg shadow-lg z-50 hidden opacity-0 transition-opacity duration-300"><p id="message-text"></p></div>
 
+    <div id="help-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
+        <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-2xl border border-gray-700 flex flex-col max-h-[80vh]">
+            <h4 class="text-2xl font-bold mb-4 text-white">Insta-Clone Help</h4>
+            <div id="help-content" class="flex-1 overflow-y-auto text-gray-300 space-y-4 pr-2"></div>
+            <div class="flex justify-end mt-6">
+                <button id="help-close-button" class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-purple-700">Got it!</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // --- Core Application Logic ---
         
         const $ = (selector) => document.querySelector(selector);
-        const $$ = (selector) => document.querySelectorAll(selector);
-
+        
         const inputArea = $('#inputArea');
         const outputArea = $('#outputArea');
         const eraseButton = $('#eraseButton');
@@ -181,11 +193,53 @@
         const messageBox = $('#message-box');
         const roundingToggle = $('#roundingToggle');
         const noSleepToggle = $('#noSleepToggle');
+        const helpButton = $('#helpButton');
+        const helpModal = $('#help-modal');
+        const helpContent = $('#help-content');
+        const helpCloseButton = $('#help-close-button');
 
         let variables = {};
         let wakeLock = null;
         let autocompleteState = { active: false, suggestions: [], selectedIndex: -1, wordStartIndex: -1 };
         
+        const HELP_CONTENT_INPUT = `// Welcome to Insta-Clone!
+// This is a smart calculator that processes input in real-time.
+// Below are live examples of its features.
+
+// --- FEATURES ---
+
+// VARIABLES: Assign values to names.
+price = 150
+tax_rate = 0.08 // 8% tax
+total = price + (price * tax_rate)
+
+// COMMENTS: Use '//' to add notes.
+
+// DATE MATH: Calculate dates from today.
+today + 30 days
+
+// UNIT CONVERSIONS: A wide range of units are supported.
+100 usd to gbp
+50 kg to lb
+
+// PERCENTAGES: Easily calculate percentages.
+500 + 10%
+
+// --- USAGE ---
+// AUTOCOMPLETE: Type a letter like 't' and press Tab or Enter.
+// ROUNDING: Use the "Round" toggle to format decimal results.
+// SAVE/LOAD: Use the buttons below to save your work.`;
+
+        const HELP_CONTENT_POPUP_HTML = `
+            <p>This is a smart calculator that processes input in real-time. Type on the left, see results on the right.</p>
+            <div><strong class="text-purple-400">Variables</strong><p>Assign values to names using <code>=</code>. You can then use these names in other calculations.</p><code class="block bg-gray-900 p-2 rounded-md mt-1">price = 150<br>total = price * 1.08</code></div>
+            <div><strong class="text-purple-400">Comments</strong><p>Use <code>//</code> to add notes to your calculations. Anything after // on a line is ignored.</p></div>
+            <div><strong class="text-purple-400">Date Math</strong><p>Use the <code>today</code> keyword to perform simple date calculations.</p><code class="block bg-gray-900 p-2 rounded-md mt-1">today + 90 days<br>today - 3 weeks</code></div>
+            <div><strong class="text-purple-400">Unit Conversions</strong><p>Convert units using the format <code>value from_unit to to_unit</code>.</p><code class="block bg-gray-900 p-2 rounded-md mt-1">250 usd to eur<br>100 m to ft</code></div>
+            <div><strong class="text-purple-400">Percentages</strong><p>Quickly add, subtract, or find percentages.</p><code class="block bg-gray-900 p-2 rounded-md mt-1">500 + 10%<br>75 - 20%</code></div>
+            <div><strong class="text-purple-400">Autocomplete</strong><p>Start typing any variable or keyword and a suggestion box will appear. Press <strong>Tab</strong> or <strong>Enter</strong> to accept.</p></div>
+        `;
+
         const conversionRates = {
             usd: { eur: 0.92, gbp: 0.78 }, eur: { usd: 1.09, gbp: 0.85 }, gbp: { usd: 1.28, eur: 1.17 },
             m: { ft: 3.28084, cm: 100 }, ft: { m: 0.3048, cm: 30.48 }, cm: { m: 0.01, ft: 0.0328084 },
@@ -221,19 +275,14 @@
             $('#message-text').textContent = text;
             messageBox.classList.remove('hidden');
             setTimeout(() => messageBox.classList.remove('opacity-0'), 10);
-            setTimeout(() => {
-                messageBox.classList.add('opacity-0');
-                setTimeout(() => messageBox.classList.add('hidden'), 300);
-            }, 3000);
+            setTimeout(() => { messageBox.classList.add('opacity-0'); setTimeout(() => messageBox.classList.add('hidden'), 300); }, 3000);
         };
 
         const calculate = (expression) => {
             const conversionMatch = expression.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*to\s*([a-zA-Z]+)$/);
             if (conversionMatch) {
                 const [, value, fromUnit, toUnit] = conversionMatch.map(s => s.toLowerCase());
-                if (conversionRates[fromUnit]?.[toUnit]) {
-                    return parseFloat(value) * conversionRates[fromUnit][toUnit];
-                }
+                if (conversionRates[fromUnit]?.[toUnit]) return parseFloat(value) * conversionRates[fromUnit][toUnit];
                 return `Error: Unsupported conversion.`;
             }
             expression = expression.replace(/(\d+(?:\.\d+)?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)%/g, (match, base, op, perc) => {
@@ -247,47 +296,39 @@
         };
 
         const replaceVariables = (expression) => {
-            return Object.keys(variables)
-                .sort((a, b) => b.length - a.length)
+            return Object.keys(variables).sort((a, b) => b.length - a.length)
                 .reduce((expr, key) => expr.replace(new RegExp(`\\b${key}\\b`, 'g'), variables[key]), expression);
         };
         
         const evaluateLine = (line) => {
             line = line.trim();
             if (!line) return null;
-
             const assignmentMatch = line.match(/^([a-zA-Z_]\w*)\s*=\s*(.*)$/);
             if (assignmentMatch) {
                 const [, varName, expression] = assignmentMatch;
                 variables[varName] = calculate(replaceVariables(expression));
                 return null;
             }
-            
             const dateMatch = line.match(/^today\s*([+\-])\s*([a-zA-Z_]\w*|\d+)\s*(days?|weeks?|months?|years?)$/i);
             if (dateMatch) {
                 const [, operator, valuePart, unit] = dateMatch;
                 const value = isNaN(valuePart) ? parseInt(variables[valuePart], 10) : parseInt(valuePart, 10);
                 if (isNaN(value)) return `Error: Invalid number.`;
-
                 const today = new Date();
                 const mult = operator === '+' ? 1 : -1;
                 const u = unit.toLowerCase();
-
                 if (u.startsWith('day')) today.setDate(today.getDate() + value * mult);
                 else if (u.startsWith('week')) today.setDate(today.getDate() + value * 7 * mult);
                 else if (u.startsWith('month')) today.setMonth(today.getMonth() + value * mult);
                 else if (u.startsWith('year')) today.setFullYear(today.getFullYear() + value * mult);
                 return today.toDateString();
             }
-
             return calculate(replaceVariables(line));
         };
         
         const formatResult = (result) => {
             if (typeof result === 'number' && roundingToggle.checked) {
-                if (!Number.isInteger(result)) {
-                    return result.toFixed(2);
-                }
+                if (!Number.isInteger(result)) return result.toFixed(2);
             }
             return result;
         };
@@ -298,64 +339,44 @@
             const commentIndex = line.indexOf('//');
             const codePart = commentIndex !== -1 ? line.substring(0, commentIndex) : line;
             const commentPart = commentIndex !== -1 ? `<span class="comment">${escapeHtml(line.substring(commentIndex))}</span>` : '';
-            
             const assignmentMatch = codePart.trim().match(/^([a-zA-Z_]\w*)\s*=/);
             const varNameOnLine = assignmentMatch ? assignmentMatch[1] : null;
-
             const tokens = codePart.split(/(\b[a-zA-Z_]\w*\b|=|\s+)/).filter(Boolean);
             const processedCode = tokens.map(token => {
                 if (token.trim() === '') return token;
                 if (token === '=') return `<span class="operator">${token}</span>`;
                 if (specialWords[token]) return `<span class="${specialWords[token]}">${escapeHtml(token)}</span>`;
-                
-                if (token === varNameOnLine) {
-                    return `<span class="${definedVars.has(token) ? 'variable-redefined' : 'variable-new'}">${escapeHtml(token)}</span>`;
-                }
-                if (definedVars.has(token)) {
-                    return `<span class="variable-used">${escapeHtml(token)}</span>`;
-                }
+                if (token === varNameOnLine) return `<span class="${definedVars.has(token) ? 'variable-redefined' : 'variable-new'}">${escapeHtml(token)}</span>`;
+                if (definedVars.has(token)) return `<span class="variable-used">${escapeHtml(token)}</span>`;
                 return escapeHtml(token);
             }).join('');
-
             return processedCode + commentPart;
         };
 
         // --- Main Processing and UI Updates ---
         const processInput = () => {
             highlightInput();
-            
             variables = {};
             const lines = inputArea.textContent.split('\n');
             let outputHTML = '';
-            
             lines.forEach((line) => {
                 let currentLineHTML = '';
                 const trimmedLine = line.trim();
-                
                 if (!trimmedLine) {
                     currentLineHTML = `<div class="h-6"></div>`;
                 } else {
                     const lineVars = new Set(Object.keys(variables));
                     const highlightedLine = highlightText(line, lineVars);
                     const result = evaluateLine(line);
-                    
                     if (result !== null && result !== undefined) {
                         const formattedResult = formatResult(result);
-                        currentLineHTML = `<div class="flex items-start output-highlight">
-                            <span class="mr-4 text-blue-400 font-bold">></span>
-                            <span class="flex-1">${highlightedLine}</span>
-                            <span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formattedResult}</span></span>
-                        </div>`;
+                        currentLineHTML = `<div class="flex items-start output-highlight"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1">${highlightedLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formattedResult}</span></span></div>`;
                     } else {
-                         currentLineHTML = `<div class="flex items-start output-highlight">
-                            <span class="mr-4 text-gray-400 font-bold">></span>
-                            <span class="flex-1">${highlightedLine}</span>
-                        </div>`;
+                         currentLineHTML = `<div class="flex items-start output-highlight"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedLine}</span></div>`;
                     }
                 }
                 outputHTML += currentLineHTML;
             });
-            
             outputArea.innerHTML = outputHTML || '<div class="text-gray-400">Your results will appear here in real-time.</div>';
         };
 
@@ -367,7 +388,6 @@
                 range.setEnd(selection.getRangeAt(0).startContainer, selection.getRangeAt(0).startOffset);
                 return range.toString().length;
             })() : 0;
-            
             const definedVariables = new Set();
             const lines = inputArea.textContent.split('\n');
             const highlightedLines = lines.map(line => {
@@ -376,9 +396,7 @@
                 if (assignmentMatch) definedVariables.add(assignmentMatch[1]);
                 return highlighted;
             });
-
             inputArea.innerHTML = highlightedLines.join('\n');
-            
             let charCount = 0;
             const newRange = document.createRange();
             const treeWalker = document.createTreeWalker(inputArea, NodeFilter.SHOW_TEXT);
@@ -401,14 +419,8 @@
 
         // --- Autocomplete ---
         function updateAutocompletePopup() {
-            if (!autocompleteState.active || autocompleteState.suggestions.length === 0) {
-                autocompletePopup.classList.add('hidden');
-                return;
-            }
-            autocompletePopup.innerHTML = autocompleteState.suggestions.map((s, i) =>
-                `<div class="autocomplete-item ${i === autocompleteState.selectedIndex ? 'selected' : ''}" data-index="${i}">${s}</div>`
-            ).join('');
-
+            if (!autocompleteState.active || autocompleteState.suggestions.length === 0) return autocompletePopup.classList.add('hidden');
+            autocompletePopup.innerHTML = autocompleteState.suggestions.map((s, i) => `<div class="autocomplete-item ${i === autocompleteState.selectedIndex ? 'selected' : ''}" data-index="${i}">${s}</div>`).join('');
             const range = window.getSelection().getRangeAt(0);
             const rect = range.getBoundingClientRect();
             const inputRect = inputArea.getBoundingClientRect();
@@ -422,22 +434,14 @@
         function handleAutocomplete() {
             const selection = window.getSelection();
             if (!selection.rangeCount) return closeAutocomplete();
-
             const range = selection.getRangeAt(0);
             const textBeforeCursor = range.startContainer.textContent.substring(0, range.startOffset);
-            
-            if (/\W$/.test(textBeforeCursor) || textBeforeCursor.length === 0) {
-                return closeAutocomplete();
-            }
-
+            if (/\W$/.test(textBeforeCursor) || textBeforeCursor.length === 0) return closeAutocomplete();
             const wordMatch = textBeforeCursor.match(/(\w+)$/);
             if (!wordMatch) return closeAutocomplete();
-
             const currentWord = wordMatch[1];
             autocompleteState.wordStartIndex = textBeforeCursor.length - currentWord.length;
-            const suggestions = getAutocompleteKeywords(inputArea.textContent)
-                .filter(kw => kw.startsWith(currentWord) && kw !== currentWord);
-
+            const suggestions = getAutocompleteKeywords(inputArea.textContent).filter(kw => kw.startsWith(currentWord) && kw !== currentWord);
             if (suggestions.length > 0) {
                 autocompleteState.active = true;
                 autocompleteState.suggestions = suggestions;
@@ -450,16 +454,13 @@
             const selection = window.getSelection();
             const range = selection.getRangeAt(0);
             const node = range.startContainer;
-
             const textBefore = node.textContent.substring(0, autocompleteState.wordStartIndex);
             const textAfter = node.textContent.substring(range.startOffset);
             node.textContent = `${textBefore}${suggestion} ${textAfter}`;
-            
             range.setStart(node, (textBefore + suggestion + ' ').length);
             range.collapse(true);
             selection.removeAllRanges();
             selection.addRange(range);
-            
             closeAutocomplete();
             inputArea.dispatchEvent(new Event('input', { bubbles: true }));
         }
@@ -483,23 +484,18 @@
                     return;
                 }
             }
-            
             if (event.key === 'Enter') {
                 event.preventDefault();
                 const selection = window.getSelection();
                 if (!selection.rangeCount) return;
-                
                 const range = selection.getRangeAt(0);
                 range.deleteContents();
-                
                 const newlineNode = document.createTextNode('\n');
                 range.insertNode(newlineNode);
-                
                 range.setStartAfter(newlineNode);
                 range.collapse(true);
                 selection.removeAllRanges();
                 selection.addRange(range);
-                
                 inputArea.dispatchEvent(new Event('input', { bubbles: true }));
             }
         });
@@ -515,19 +511,30 @@
         autocompletePopup.addEventListener('click', (e) => e.target.closest('.autocomplete-item') && acceptSuggestion(autocompleteState.suggestions[parseInt(e.target.dataset.index)]));
         eraseButton.addEventListener('click', () => { inputArea.textContent = ''; processInput(); showMessage('Calculator cleared!'); });
 
-        $$('#save-buttons button').forEach((button, index) => button.addEventListener('click', () => {
-            const key = `instacalc_slot_${index + 1}`;
-            if (localStorage.getItem(key)) {
-                confirmModal.classList.add('flex'); confirmModal.classList.remove('hidden');
-                $('#confirm-ok').onclick = () => { localStorage.setItem(key, inputArea.textContent); confirmModal.classList.add('hidden'); showMessage(`Saved to slot ${index + 1}!`); };
-                $('#confirm-cancel').onclick = () => confirmModal.classList.add('hidden');
-            } else { localStorage.setItem(key, inputArea.textContent); showMessage(`Saved to slot ${index + 1}!`); }
-        }));
-        $$('#load-buttons button').forEach((button, index) => button.addEventListener('click', () => {
-            const savedValue = localStorage.getItem(`instacalc_slot_${index + 1}`);
-            if (savedValue) { inputArea.textContent = savedValue; processInput(); showMessage(`Loaded from slot ${index + 1}!`); }
-            else { showMessage(`Slot ${index + 1} is empty.`); }
-        }));
+        // --- FIXED: Robust Event Listeners for Save/Load ---
+        for (let i = 1; i <= 3; i++) {
+            $(`#save-${i}`).addEventListener('click', () => {
+                const key = `instacalc_slot_${i}`;
+                if (localStorage.getItem(key)) {
+                    confirmModal.classList.add('flex'); confirmModal.classList.remove('hidden');
+                    $('#confirm-ok').onclick = () => { localStorage.setItem(key, inputArea.textContent); confirmModal.classList.add('hidden'); showMessage(`Saved to slot ${i}!`); };
+                    $('#confirm-cancel').onclick = () => confirmModal.classList.add('hidden');
+                } else {
+                    localStorage.setItem(key, inputArea.textContent);
+                    showMessage(`Saved to slot ${i}!`);
+                }
+            });
+            $(`#load-${i}`).addEventListener('click', () => {
+                const savedValue = localStorage.getItem(`instacalc_slot_${i}`);
+                if (savedValue) {
+                    inputArea.textContent = savedValue;
+                    processInput();
+                    showMessage(`Loaded from slot ${i}!`);
+                } else {
+                    showMessage(`Slot ${i} is empty.`);
+                }
+            });
+        }
         
         noSleepToggle.addEventListener('change', async (e) => {
             if (e.target.checked) {
@@ -541,10 +548,18 @@
             } else if (wakeLock) { wakeLock.release(); wakeLock = null; }
         });
         
+        helpButton.addEventListener('click', () => {
+            helpModal.classList.remove('hidden');
+            helpModal.classList.add('flex');
+        });
+        helpCloseButton.addEventListener('click', () => {
+            helpModal.classList.add('hidden');
+            helpModal.classList.remove('flex');
+        });
+
         window.addEventListener('DOMContentLoaded', () => {
-            inputArea.textContent = `// UI is now aligned and mobile-friendly!
-total = 700
-total`;
+            helpContent.innerHTML = HELP_CONTENT_POPUP_HTML;
+            inputArea.textContent = HELP_CONTENT_INPUT;
             processInput();
         });
 

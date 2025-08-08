@@ -135,11 +135,11 @@
         }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4"> <!-- MODIFIED -->
+<body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
 
-    <div class="w-full max-w-4xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row flex-shrink-0 md:flex-1 md:min-h-0"> <!-- MODIFIED -->
+    <div class="w-full max-w-4xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row flex-shrink-0 md:flex-1 md:min-h-0">
         <!-- Left Panel: Input Area -->
-        <div class="flex-1 flex flex-col p-4 md:p-8 h-72 md:h-auto"> <!-- MODIFIED -->
+        <div class="flex-1 flex flex-col p-4 md:p-8 h-72 md:h-auto">
             <div class="flex justify-between items-center mb-2 h-12">
                 <h2 class="text-2xl font-bold text-white">Insta-Clone</h2>
                 <button id="eraseButton" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg shadow-lg hover:bg-red-700">Erase</button>
@@ -151,7 +151,7 @@
             </div>
         </div>
         <!-- Right Panel: Output Area -->
-        <div class="flex-1 flex flex-col p-4 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30 h-72 md:h-auto"> <!-- MODIFIED -->
+        <div class="flex-1 flex flex-col p-4 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30 h-72 md:h-auto">
             <div class="flex justify-between items-center mb-2 h-12">
                 <h2 class="text-2xl font-bold text-white">Results</h2>
                 <div class="flex items-center space-x-3">
@@ -247,17 +247,22 @@
         let autocompleteState = { active: false, suggestions: [], selectedIndex: -1, wordStartIndex: -1 };
         
         const HELP_CONTENT_INPUT = `// Welcome to Insta-Clone!
-// Click the Help button below for a full guide.`;
+// Variables are NOT case-sensitive.
+// For example, 'cost' and 'Cost' are the same.
+
+Cost = 150
+tax_rate = 10%
+total = Cost + tax_rate`;
 
         // --- NEW: Polished and Comprehensive Help Content ---
         const HELP_CONTENT_POPUP_HTML = `
             <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and more. Type in the left panel and see the magic happen on the right.</p>
             
             <h5>Core Features</h5>
-            <p><strong>Variables:</strong> Store numbers in named variables using <code>=</code>. You can then use them in other calculations.</p>
+            <p><strong>Variables:</strong> Store numbers in named variables using <code>=</code>. Variable names are <strong>not case-sensitive</strong>, so <code>rent</code> and <code>Rent</code> are treated as the same variable.</p>
             <code>rent = 1200
 utilities = 250
-total_cost = rent + utilities</code>
+total_cost = Rent + utilities // This works!</code>
 
             <p><strong>Math Operations:</strong> Use standard operators like <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code> and group expressions with parentheses <code>()</code>.</p>
             <code>(100 - 25) * 2</code>
@@ -293,7 +298,7 @@ endfor</code>
             <p><strong>File System:</strong> Use "Save to File" to download your work as a <code>.txt</code> file. This is perfect for backups or for sharing your calculations with others. Use "Load from File" to open a saved file.</p>
             
             <h5>Interface Tips</h5>
-            <p><strong>Autocomplete:</strong> Start typing a variable or keyword (like <code>today</code> or <code>for</code>) and a suggestion box will appear. Press <strong>Tab</strong> or <strong>Enter</strong> to accept the suggestion.</p>
+            <p><strong>Autocomplete:</strong> Start typing a variable or keyword and a suggestion box will appear (case-insensitive). Press <strong>Tab</strong> or <strong>Enter</strong> to accept the suggestion.</p>
             <p><strong>Rounding Toggle:</strong> When enabled, this toggle will format all decimal results to two decimal places.</p>
             <p><strong>No Sleep Toggle:</strong> When enabled, this will prevent your device's screen from turning off automatically. Useful for long calculation sessions!</p>
         `;
@@ -317,7 +322,7 @@ endfor</code>
             textContent.split('\n').forEach(line => {
                 const match = line.trim().match(/^([a-zA-Z_]\w*)\s*=/);
                 if (match) {
-                    const varName = match[1];
+                    const varName = match[1].toLowerCase(); // <!-- MODIFIED -->
                     const existingIndex = orderedVars.indexOf(varName);
                     if (existingIndex > -1) orderedVars.splice(existingIndex, 1);
                     orderedVars.push(varName);
@@ -340,7 +345,7 @@ endfor</code>
         const calculate = (expression) => {
             if (!expression) return undefined;
             // Handle "15% of 300"
-            const percentageOfMatch = expression.match(/(\d+(?:\.\d+)?)%\s*of\s*(\d+(?:\.\d+)?)/);
+            const percentageOfMatch = expression.match(/(\d+(?:\.\d+)?)%\s*of\s*(\d+(?:\.\d+)?)/i); // <!-- MODIFIED -->
             if (percentageOfMatch) {
                 const [, perc, num] = percentageOfMatch;
                 return (parseFloat(perc) / 100) * parseFloat(num);
@@ -363,7 +368,7 @@ endfor</code>
 
         const replaceVariables = (expression) => {
             return Object.keys(variables).sort((a, b) => b.length - a.length)
-                .reduce((expr, key) => expr.replace(new RegExp(`\\b${key}\\b`, 'g'), variables[key]), expression);
+                .reduce((expr, key) => expr.replace(new RegExp(`\\b${key}\\b`, 'gi'), variables[key]), expression); // <!-- MODIFIED -->
         };
         
         const evaluateLine = (line) => {
@@ -374,13 +379,13 @@ endfor</code>
             if (assignmentMatch) {
                 const [, varName, expression] = assignmentMatch;
                 const result = calculate(replaceVariables(expression.trim()));
-                variables[varName] = result;
+                variables[varName.toLowerCase()] = result; // <!-- MODIFIED -->
                 return result;
             }
             const dateMatch = line.match(/^today\s*([+\-])\s*([a-zA-Z_]\w*|\d+)\s*(days?|weeks?|months?|years?)$/i);
             if (dateMatch) {
                 const [, operator, valuePart, unit] = dateMatch;
-                const value = isNaN(valuePart) ? parseInt(variables[valuePart], 10) : parseInt(valuePart, 10);
+                const value = isNaN(valuePart) ? parseInt(variables[valuePart.toLowerCase()], 10) : parseInt(valuePart, 10); // <!-- MODIFIED -->
                 if (isNaN(value)) return `Error: Invalid number.`;
                 const today = new Date();
                 const mult = operator === '+' ? 1 : -1;
@@ -408,7 +413,7 @@ endfor</code>
             const codePart = commentIndex !== -1 ? line.substring(0, commentIndex) : line;
             const commentPart = commentIndex !== -1 ? `<span class="comment">${escapeHtml(line.substring(commentIndex))}</span>` : '';
             const assignmentMatch = codePart.trim().match(/^([a-zA-Z_]\w*)\s*=/);
-            const varNameOnLine = assignmentMatch ? assignmentMatch[1] : null;
+            const varNameOnLine = assignmentMatch ? assignmentMatch[1].toLowerCase() : null; // <!-- MODIFIED -->
             
             const tokens = codePart.split(/(\b[a-zA-Z_]\w*\b|=|\s+)/).filter(Boolean);
 
@@ -417,8 +422,14 @@ endfor</code>
                 if (token.trim() === '') return token;
                 if (token === '=') return `<span class="operator">${token}</span>`;
                 if (specialWords[trimmedToken]) return `<span class="${specialWords[trimmedToken]}">${escapeHtml(token)}</span>`;
-                if (token === varNameOnLine) return `<span class="${definedVars.has(token) ? 'variable-redefined' : 'variable-new'}">${escapeHtml(token)}</span>`;
-                if (definedVars.has(token)) return `<span class="variable-used">${escapeHtml(token)}</span>`;
+                // <!-- MODIFIED BLOCK START -->
+                if (trimmedToken === varNameOnLine) {
+                    return `<span class="${definedVars.has(trimmedToken) ? 'variable-redefined' : 'variable-new'}">${escapeHtml(token)}</span>`;
+                }
+                if (definedVars.has(trimmedToken)) {
+                    return `<span class="variable-used">${escapeHtml(token)}</span>`;
+                }
+                // <!-- MODIFIED BLOCK END -->
                 return escapeHtml(token);
             }).join('');
             return processedCode + commentPart;
@@ -440,6 +451,7 @@ endfor</code>
                     loopIdCounter++;
                     const loopBodyId = `loop-body-${loopIdCounter}`;
                     const [, iterator, startExpr, endExpr] = forLoopMatch;
+                    const iteratorLower = iterator.toLowerCase(); // <!-- MODIFIED -->
                     let endforIndex = -1;
                     let nestingLevel = 0;
                     for (let j = i + 1; j < lines.length; j++) {
@@ -466,7 +478,7 @@ endfor</code>
                         loopBodyHTML = `<div class="text-red-400 ml-8">Error: Loop bounds must be numbers.</div>`;
                     } else {
                         for (let k = startValue; k <= endValue; k++) {
-                            variables[iterator] = k;
+                            variables[iteratorLower] = k; // <!-- MODIFIED -->
                             loopBodyLines.forEach(bodyLine => {
                                 const result = evaluateLine(bodyLine);
                                 const highlightedBodyLine = highlightText(bodyLine, new Set(Object.keys(variables)));
@@ -479,7 +491,7 @@ endfor</code>
                                 }
                             });
                         }
-                        delete variables[iterator];
+                        delete variables[iteratorLower]; // <!-- MODIFIED -->
                     }
                     
                     loopBodyHTML += `<div class="flex items-start output-highlight"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightText(lines[endforIndex], new Set(Object.keys(variables)))}</span></div>`;
@@ -520,7 +532,7 @@ endfor</code>
             const highlightedLines = lines.map(line => {
                 const highlighted = highlightText(line, definedVariables);
                 const assignmentMatch = line.trim().match(/^([a-zA-Z_]\w*)\s*=/);
-                if (assignmentMatch) definedVariables.add(assignmentMatch[1]);
+                if (assignmentMatch) definedVariables.add(assignmentMatch[1].toLowerCase()); // <!-- MODIFIED -->
                 return highlighted;
             });
             
@@ -568,9 +580,16 @@ endfor</code>
             if (/\W$/.test(textBeforeCursor) || textBeforeCursor.length === 0) return closeAutocomplete();
             const wordMatch = textBeforeCursor.match(/(\w+)$/);
             if (!wordMatch) return closeAutocomplete();
+            
+            // <!-- MODIFIED BLOCK START -->
             const currentWord = wordMatch[1];
+            const lowerCurrentWord = currentWord.toLowerCase();
             autocompleteState.wordStartIndex = textBeforeCursor.length - currentWord.length;
-            const suggestions = getAutocompleteKeywords(inputArea.textContent).filter(kw => kw.startsWith(currentWord) && kw !== currentWord);
+            const suggestions = getAutocompleteKeywords(inputArea.textContent).filter(kw => 
+                kw.startsWith(lowerCurrentWord) && kw !== lowerCurrentWord
+            );
+            // <!-- MODIFIED BLOCK END -->
+
             if (suggestions.length > 0) {
                 autocompleteState.active = true;
                 autocompleteState.suggestions = suggestions;

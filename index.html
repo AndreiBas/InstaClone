@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" id="viewportMeta">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Insta-Clone Calculator</title>
     <!-- Use the Inter font from Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -135,11 +135,11 @@
         }
     </style>
 </head>
-<!-- MODIFIED: Changed h-screen to min-h-screen -->
-<body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
-    <div class="w-full max-w-4xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row flex-1 min-h-0">
+<body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4"> <!-- MODIFIED -->
+
+    <div class="w-full max-w-4xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row flex-shrink-0 md:flex-1 md:min-h-0"> <!-- MODIFIED -->
         <!-- Left Panel: Input Area -->
-        <div class="flex-1 flex flex-col p-4 md:p-8 h-[45vh] md:h-auto">
+        <div class="flex-1 flex flex-col p-4 md:p-8 h-72 md:h-auto"> <!-- MODIFIED -->
             <div class="flex justify-between items-center mb-2 h-12">
                 <h2 class="text-2xl font-bold text-white">Insta-Clone</h2>
                 <button id="eraseButton" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg shadow-lg hover:bg-red-700">Erase</button>
@@ -151,7 +151,7 @@
             </div>
         </div>
         <!-- Right Panel: Output Area -->
-        <div class="flex-1 flex flex-col p-4 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30 h-[45vh] md:h-auto">
+        <div class="flex-1 flex flex-col p-4 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30 h-72 md:h-auto"> <!-- MODIFIED -->
             <div class="flex justify-between items-center mb-2 h-12">
                 <h2 class="text-2xl font-bold text-white">Results</h2>
                 <div class="flex items-center space-x-3">
@@ -249,6 +249,7 @@
         const HELP_CONTENT_INPUT = `// Welcome to Insta-Clone!
 // Click the Help button below for a full guide.`;
 
+        // --- NEW: Polished and Comprehensive Help Content ---
         const HELP_CONTENT_POPUP_HTML = `
             <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and more. Type in the left panel and see the magic happen on the right.</p>
             
@@ -280,7 +281,7 @@ last_meeting = today - 3 weeks</code>
 5 kg to lb</code>
 
             <h5>Looping</h5>
-            <p><strong>For Loops:</strong> Run a block of code multiple times. The syntax is s<code>for variable = start to end</code>, finishing with <code>endfor</code>. In the Results panel, click the '►' icon on the loop header to expand or collapse its output.</p>
+            <p><strong>For Loops:</strong> Run a block of code multiple times. The syntax is <code>for variable = start to end</code>, finishing with <code>endfor</code>. In the Results panel, click the '►' icon on the loop header to expand or collapse its output.</p>
             <code>// Calculate the sum of numbers from 1 to 5
 total = 0
 for i = 1 to 5
@@ -311,17 +312,6 @@ endfor</code>
             'years': 'unit', 'year': 'unit', 'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
         };
 
-        const adjustViewportForMobile = () => {
-            const viewportTag = $('#viewportMeta');
-            if (!viewportTag) return;
-            const mobileBreakpoint = 768;
-            if (window.innerWidth < mobileBreakpoint) {
-                viewportTag.setAttribute('content', 'width=1024');
-            } else {
-                viewportTag.setAttribute('content', 'width=device-width, initial-scale=1.0');
-            }
-        };
-
         const getAutocompleteKeywords = (textContent) => {
             const orderedVars = [];
             textContent.split('\n').forEach(line => {
@@ -338,6 +328,8 @@ endfor</code>
             return [...newestVarsFirst, ...specialKeywordsList.filter(k => !orderedVars.includes(k))];
         };
         
+        // --- Helper Functions ---
+
         const showMessage = (text) => {
             $('#message-text').textContent = text;
             messageBox.classList.remove('hidden');
@@ -347,6 +339,7 @@ endfor</code>
 
         const calculate = (expression) => {
             if (!expression) return undefined;
+            // Handle "15% of 300"
             const percentageOfMatch = expression.match(/(\d+(?:\.\d+)?)%\s*of\s*(\d+(?:\.\d+)?)/);
             if (percentageOfMatch) {
                 const [, perc, num] = percentageOfMatch;
@@ -553,6 +546,7 @@ endfor</code>
             selection.addRange(newRange);
         };
 
+        // --- Autocomplete ---
         function updateAutocompletePopup() {
             if (!autocompleteState.active || autocompleteState.suggestions.length === 0) return autocompletePopup.classList.add('hidden');
             autocompletePopup.innerHTML = autocompleteState.suggestions.map((s, i) => `<div class="autocomplete-item ${i === autocompleteState.selectedIndex ? 'selected' : ''}" data-index="${i}">${s}</div>`).join('');
@@ -732,15 +726,10 @@ endfor</code>
             helpModal.classList.remove('flex');
         });
 
-        window.addEventListener('resize', adjustViewportForMobile);
-
         window.addEventListener('DOMContentLoaded', () => {
             helpContent.innerHTML = HELP_CONTENT_POPUP_HTML;
             inputArea.textContent = HELP_CONTENT_INPUT;
             document.execCommand("defaultParagraphSeparator", false, "br");
-            
-            adjustViewportForMobile();
-            
             processInput();
         });
 

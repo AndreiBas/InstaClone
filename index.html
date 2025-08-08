@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- MODIFIED: Added an ID to the viewport meta tag -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" id="viewportMeta">
     <title>Insta-Clone Calculator</title>
     <!-- Use the Inter font from Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -248,7 +249,6 @@
         const HELP_CONTENT_INPUT = `// Welcome to Insta-Clone!
 // Click the Help button below for a full guide.`;
 
-        // --- NEW: Polished and Comprehensive Help Content ---
         const HELP_CONTENT_POPUP_HTML = `
             <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and more. Type in the left panel and see the magic happen on the right.</p>
             
@@ -270,7 +270,7 @@ total_cost = rent + utilities</code>
 120 - 25%       // Subtracts 25% of 120
 15% of 300      // Calculates 15% of 300</code>
 
-            <p><strong>Date Math:</strong> Use the <code>today</code> keyword to calculate future or past dates. Supported units: <code>days</code>, <code>weeks</code>, <code>months</code>, <code>years</code>.</p>
+            <p><strong>Date Math:</strong> Use the <code>today</code> keyword to calculate future or past dates. Supported units: s<code>days</code>, <code>weeks</code>, <code>months</code>, <code>years</code>.</p>
             <code>project_due = today + 90 days
 last_meeting = today - 3 weeks</code>
 
@@ -311,6 +311,23 @@ endfor</code>
             'years': 'unit', 'year': 'unit', 'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
         };
 
+        // --- NEW: Function to force desktop view on mobile ---
+        const adjustViewportForMobile = () => {
+            const viewportTag = $('#viewportMeta');
+            if (!viewportTag) return;
+
+            const mobileBreakpoint = 768; // Corresponds to Tailwind's 'md' breakpoint
+
+            if (window.innerWidth < mobileBreakpoint) {
+                // On small screens, fix the viewport width to a desktop-like size.
+                // This forces the browser to render a "zoomed-out" view that the user can pan and zoom.
+                viewportTag.setAttribute('content', 'width=1024');
+            } else {
+                // On larger screens, use the standard responsive viewport.
+                viewportTag.setAttribute('content', 'width=device-width, initial-scale=1.0');
+            }
+        };
+
         const getAutocompleteKeywords = (textContent) => {
             const orderedVars = [];
             textContent.split('\n').forEach(line => {
@@ -327,8 +344,6 @@ endfor</code>
             return [...newestVarsFirst, ...specialKeywordsList.filter(k => !orderedVars.includes(k))];
         };
         
-        // --- Helper Functions ---
-
         const showMessage = (text) => {
             $('#message-text').textContent = text;
             messageBox.classList.remove('hidden');
@@ -338,7 +353,6 @@ endfor</code>
 
         const calculate = (expression) => {
             if (!expression) return undefined;
-            // Handle "15% of 300"
             const percentageOfMatch = expression.match(/(\d+(?:\.\d+)?)%\s*of\s*(\d+(?:\.\d+)?)/);
             if (percentageOfMatch) {
                 const [, perc, num] = percentageOfMatch;
@@ -545,7 +559,6 @@ endfor</code>
             selection.addRange(newRange);
         };
 
-        // --- Autocomplete ---
         function updateAutocompletePopup() {
             if (!autocompleteState.active || autocompleteState.suggestions.length === 0) return autocompletePopup.classList.add('hidden');
             autocompletePopup.innerHTML = autocompleteState.suggestions.map((s, i) => `<div class="autocomplete-item ${i === autocompleteState.selectedIndex ? 'selected' : ''}" data-index="${i}">${s}</div>`).join('');
@@ -725,10 +738,17 @@ endfor</code>
             helpModal.classList.remove('flex');
         });
 
+        // --- MODIFIED: Listen for window resize to adjust viewport ---
+        window.addEventListener('resize', adjustViewportForMobile);
+
         window.addEventListener('DOMContentLoaded', () => {
             helpContent.innerHTML = HELP_CONTENT_POPUP_HTML;
             inputArea.textContent = HELP_CONTENT_INPUT;
             document.execCommand("defaultParagraphSeparator", false, "br");
+            
+            // --- MODIFIED: Call the viewport adjustment on initial load ---
+            adjustViewportForMobile();
+            
             processInput();
         });
 

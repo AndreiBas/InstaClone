@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <!-- MODIFIED: Added an ID to the viewport meta tag -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0" id="viewportMeta">
     <title>Insta-Clone Calculator</title>
     <!-- Use the Inter font from Google Fonts -->
@@ -136,7 +135,8 @@
         }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center h-screen p-2 sm:p-4">
+<!-- MODIFIED: Changed h-screen to min-h-screen -->
+<body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
     <div class="w-full max-w-4xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row flex-1 min-h-0">
         <!-- Left Panel: Input Area -->
         <div class="flex-1 flex flex-col p-4 md:p-8 h-[45vh] md:h-auto">
@@ -270,7 +270,7 @@ total_cost = rent + utilities</code>
 120 - 25%       // Subtracts 25% of 120
 15% of 300      // Calculates 15% of 300</code>
 
-            <p><strong>Date Math:</strong> Use the <code>today</code> keyword to calculate future or past dates. Supported units: s<code>days</code>, <code>weeks</code>, <code>months</code>, <code>years</code>.</p>
+            <p><strong>Date Math:</strong> Use the <code>today</code> keyword to calculate future or past dates. Supported units: <code>days</code>, <code>weeks</code>, <code>months</code>, <code>years</code>.</p>
             <code>project_due = today + 90 days
 last_meeting = today - 3 weeks</code>
 
@@ -280,7 +280,7 @@ last_meeting = today - 3 weeks</code>
 5 kg to lb</code>
 
             <h5>Looping</h5>
-            <p><strong>For Loops:</strong> Run a block of code multiple times. The syntax is <code>for variable = start to end</code>, finishing with <code>endfor</code>. In the Results panel, click the '►' icon on the loop header to expand or collapse its output.</p>
+            <p><strong>For Loops:</strong> Run a block of code multiple times. The syntax is s<code>for variable = start to end</code>, finishing with <code>endfor</code>. In the Results panel, click the '►' icon on the loop header to expand or collapse its output.</p>
             <code>// Calculate the sum of numbers from 1 to 5
 total = 0
 for i = 1 to 5
@@ -311,19 +311,13 @@ endfor</code>
             'years': 'unit', 'year': 'unit', 'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
         };
 
-        // --- NEW: Function to force desktop view on mobile ---
         const adjustViewportForMobile = () => {
             const viewportTag = $('#viewportMeta');
             if (!viewportTag) return;
-
-            const mobileBreakpoint = 768; // Corresponds to Tailwind's 'md' breakpoint
-
+            const mobileBreakpoint = 768;
             if (window.innerWidth < mobileBreakpoint) {
-                // On small screens, fix the viewport width to a desktop-like size.
-                // This forces the browser to render a "zoomed-out" view that the user can pan and zoom.
                 viewportTag.setAttribute('content', 'width=1024');
             } else {
-                // On larger screens, use the standard responsive viewport.
                 viewportTag.setAttribute('content', 'width=device-width, initial-scale=1.0');
             }
         };
@@ -738,7 +732,6 @@ endfor</code>
             helpModal.classList.remove('flex');
         });
 
-        // --- MODIFIED: Listen for window resize to adjust viewport ---
         window.addEventListener('resize', adjustViewportForMobile);
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -746,7 +739,6 @@ endfor</code>
             inputArea.textContent = HELP_CONTENT_INPUT;
             document.execCommand("defaultParagraphSeparator", false, "br");
             
-            // --- MODIFIED: Call the viewport adjustment on initial load ---
             adjustViewportForMobile();
             
             processInput();

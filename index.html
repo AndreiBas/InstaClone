@@ -318,9 +318,13 @@ endfor</code>
             'years': 'unit', 'year': 'unit', 'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
         };
 
+        // <!-- MODIFIED -->
         const setDefaultCalculationName = () => {
-            const date = new Date().toISOString().slice(0, 10);
-            calculationNameInput.value = `Insta-Clone ${date}`; // <!-- MODIFIED -->
+            const today = new Date();
+            const mm = String(today.getMonth() + 1).padStart(2, '0');
+            const dd = String(today.getDate()).padStart(2, '0');
+            const yy = today.getFullYear().toString().slice(-2);
+            calculationNameInput.value = `Insta-Clone ${mm}-${dd}-${yy}`;
         };
 
         const getAutocompleteKeywords = (textContent) => {
@@ -713,7 +717,7 @@ endfor</code>
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Insta-Clone_${sanitizedBaseName}.txt`; // <!-- MODIFIED -->
+            a.download = `Insta-Clone_${sanitizedBaseName}.txt`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);

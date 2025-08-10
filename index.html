@@ -118,8 +118,8 @@
             font-size: 1.125rem; /* text-lg */
             font-weight: 600; /* font-semibold */
             color: #c084fc; /* purple-400 */
-            margin-top: 1rem;
-            margin-bottom: 0.5rem;
+            margin-top: 1.25rem;
+            margin-bottom: 0.75rem;
             border-bottom: 1px solid #4b5563; /* gray-600 */
             padding-bottom: 0.25rem;
         }
@@ -132,6 +132,13 @@
             white-space: pre-wrap;
             font-family: 'Courier New', Courier, monospace;
             color: #9ca3af; /* gray-400 */
+        }
+        #help-content p {
+            margin-bottom: 0.5rem;
+        }
+        #help-content strong {
+            color: #a5b4fc; /* indigo-300 */
+            font-weight: 500;
         }
     </style>
 </head>
@@ -209,7 +216,9 @@
             </div>
         </div>
     </div>
-    <div id="message-box" class="fixed bottom-4 left-1/2 -translate-x-1/2 p-4 bg-gray-800 text-white rounded-lg shadow-lg z-50 hidden opacity-0 transition-opacity duration-300"><p id="message-text"></p></div>
+    
+    <!-- MODIFIED: Message box is now positioned at the top -->
+    <div id="message-box" class="fixed top-4 left-1/2 -translate-x-1/2 p-4 bg-gray-800 text-white rounded-lg shadow-lg z-50 hidden opacity-0 transition-opacity duration-300"><p id="message-text"></p></div>
 
     <div id="help-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
         <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-2xl border border-gray-700 flex flex-col max-h-[80vh]">
@@ -256,64 +265,72 @@ tax_rate = 10
 total = Cost + tax_rate%`;
 
         const HELP_CONTENT_POPUP_HTML = `
-            <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and more. Type in the left panel and see the magic happen on the right.</p>
+            <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and more. Type on the left and see the results on the right.</p>
             
-            <h5>Core Features</h5>
-            <p><strong>Calculation Name:</strong> Edit the name of your calculation at the top-left. This name is used when you save your work to a file.</p>
-            <p><strong>Variables:</strong> Store numbers in named variables using <code>=</code>. Variable names are <strong>not case-sensitive</strong>, so <code>rent</code> and <code>Rent</code> are treated as the same variable.</p>
+            <h5>Getting Started: The Basics</h5>
+            <p><strong>Variables:</strong> Names are <strong>not case-sensitive</strong> (so <code>rent</code> and <code>Rent</code> are the same).</p>
             <code>rent = 1200
 utilities = 250
-total_cost = Rent + utilities // This works!</code>
+total_cost = Rent + utilities</code>
 
-            <p><strong>Math Operations:</strong> Use standard operators like <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code> and group expressions with parentheses <code>()</code>.</p>
+            <p><strong>Math Operations:</strong> Use standard operators like <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code> and group with parentheses <code>()</code>.</p>
             <code>(100 - 25) * 2</code>
 
-            <p><strong>Comments:</strong> Add notes to your calculations using <code>//</code>. Everything after it on a line is ignored.</p>
+            <p><strong>Comments:</strong> Use <code>//</code> to add notes. Anything after it on a line is ignored.</p>
             <code>income = 5000 // Gross monthly salary</code>
 
             <h5>Advanced Calculations</h5>
-            <p><strong>Percentages:</strong> Easily add, subtract, or find the percentage of a number.</p>
+            <p><strong>Percentages:</strong> Easily add, subtract, or find a percentage.</p>
             <code>500 + 10%       // Adds 10% of 500
 120 - 25%       // Subtracts 25% of 120
 15% of 300      // Calculates 15% of 300</code>
 
-            <p><strong>Date Math:</strong> Use the <code>today</code> keyword to calculate future or past dates. Supported units: <code>days</code>, <code>weeks</code>, <code>months</code>, <code>years</code>.</p>
+            <p><strong>Date Math:</strong> Use the <code>today</code> keyword to find future or past dates.</p>
             <code>project_due = today + 90 days
 last_meeting = today - 3 weeks</code>
 
-            <p><strong>Unit Conversions:</strong> Convert between currencies and measurements using the format: <code>value from_unit to to_unit</code>.</p>
+            <p><strong>Unit Conversions:</strong> Convert values using the format: <code>value from_unit to to_unit</code>.</p>
             <code>100 usd to gbp
 2.5 m to ft
-5 kg to lb</code>
+10 cm to inch</code>
 
-            <h5>Looping</h5>
-            <p><strong>For Loops:</strong> Run a block of code multiple times. The syntax is <code>for variable = start to end</code>, finishing with <code>endfor</code>. In the Results panel, click the '►' icon on the loop header to expand or collapse its output.</p>
-            <code>// Calculate the sum of numbers from 1 to 5
-total = 0
+            <h5>Automating with Loops</h5>
+            <p><strong>For Loops:</strong> Run code multiple times with <code>for variable = start to end</code> and finish with <code>endfor</code>.</p>
+            <code>total = 0
 for i = 1 to 5
   total = total + i
 endfor</code>
 
             <h5>Managing Your Work</h5>
-            <p><strong>Quick Save Slots:</strong> Use the "Save 1/2/3" and "Load 1/2/3" buttons to quickly store and retrieve your work in your browser's local storage. This is great for temporary saves.</p>
-            <p><strong>File System:</strong> Use "Save to File" to download your work as a <code>.txt</code> file. This is perfect for backups or for sharing your calculations with others. Use "Load from File" to open a saved file.</p>
+            <p><strong>Calculation Name:</strong> Edit the name at the top-left. This is used when saving to a file.</p>
+            <p><strong>Quick Save & Load:</strong> Use the "Save 1/2/3" and "Load 1/2/3" buttons for quick storage in your browser.</p>
+            <p><strong>Save & Load from File:</strong> Use "Save to File" to download your work. Use "Load from File" to open it later.</p>
             
-            <h5>Interface Tips</h5>
-            <p><strong>Autocomplete:</strong> Start typing a variable or keyword and a suggestion box will appear (case-insensitive). Press <strong>Tab</strong> or <strong>Enter</strong> to accept the suggestion.</p>
-            <p><strong>Rounding Toggle:</strong> When enabled, this toggle will format all decimal results to two decimal places.</p>
-            <p><strong>No Sleep Toggle:</strong> When enabled, this will prevent your device's screen from turning off automatically. Useful for long calculation sessions!</p>
+            <h5>Interface & Tips</h5>
+            <p><strong>Autocomplete:</strong> Start typing a variable or keyword and a suggestion box will appear. Press <strong>Tab</strong> or <strong>Enter</strong> to accept.</p>
+            <p><strong>Collapsible Results:</strong> In the Results panel, click the '►' icon on a loop header to expand or collapse its output.</p>
+            <p><strong>Rounding Toggle:</strong> Enable this to format all decimal results to two decimal places.</p>
+            <p><strong>No Sleep Toggle:</strong> Enable this to prevent your device's screen from turning off.</p>
         `;
 
+        const inchRates = { cm: 2.54, m: 0.0254, ft: 1/12 };
         const conversionRates = {
+            // Currency
             usd: { eur: 0.92, gbp: 0.78 }, eur: { usd: 1.09, gbp: 0.85 }, gbp: { usd: 1.28, eur: 1.17 },
-            m: { ft: 3.28084, cm: 100 }, ft: { m: 0.3048, cm: 30.48 }, cm: { m: 0.01, ft: 0.0328084 },
+            // Length
+            m: { ft: 3.28084, cm: 100, in: 39.3701, inch: 39.3701 },
+            ft: { m: 0.3048, cm: 30.48, in: 12, inch: 12 },
+            cm: { m: 0.01, ft: 0.0328084, in: 0.393701, inch: 0.393701 },
+            in: inchRates,
+            inch: inchRates,
+            // Weight
             kg: { lb: 2.20462 }, lb: { kg: 0.453592 },
         };
 
         const specialWords = {
             'today': 'keyword', 'to': 'keyword', 'for': 'keyword', 'endfor': 'keyword', 'of': 'keyword',
             'usd': 'unit', 'eur': 'unit', 'gbp': 'unit',
-            'm': 'unit', 'ft': 'unit', 'cm': 'unit', 'kg': 'unit', 'lb': 'unit',
+            'm': 'unit', 'ft': 'unit', 'cm': 'unit', 'kg': 'unit', 'lb': 'unit', 'in': 'unit', 'inch': 'unit',
             'days': 'unit', 'day': 'unit', 'weeks': 'unit', 'week': 'unit', 'months': 'unit', 'month': 'unit',
             'years': 'unit', 'year': 'unit', 'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
         };
@@ -675,7 +692,7 @@ endfor</code>
             }
         });
 
-        // <!-- MODIFIED: Quick Save/Load Logic -->
+        // Quick Save/Load Logic
         for (let i = 1; i <= 3; i++) {
             $(`#save-${i}`).addEventListener('click', () => {
                 const key = `instacalc_slot_${i}`;
@@ -714,7 +731,7 @@ endfor</code>
             });
         }
         
-        // <!-- MODIFIED: File Save Logic -->
+        // File Save Logic
         saveToFileButton.addEventListener('click', () => {
             const dataToSave = {
                 name: calculationNameInput.value,
@@ -734,7 +751,7 @@ endfor</code>
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
-            a.download = `Insta-Clone_${sanitizedBaseName}.txt`;
+            a.download = `IC_${sanitizedBaseName}.txt`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -746,7 +763,7 @@ endfor</code>
             fileLoaderInput.click();
         });
 
-        // <!-- MODIFIED: File Load Logic -->
+        // File Load Logic
         fileLoaderInput.addEventListener('change', (event) => {
             if (!event.target.files || event.target.files.length === 0) return;
             const file = event.target.files[0];

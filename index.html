@@ -6,90 +6,85 @@
     <title>Insta-Clone Calculator</title>
     <!-- Use the Inter font from Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- ADDED: pako.js for compression/decompression for sharing -->
+    <!-- pako.js for compression/decompression for sharing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
     <style>
         body {
             font-family: 'Inter', sans-serif;
         }
         /* Custom scrollbar styles */
-        ::-webkit-scrollbar {
-            width: 8px;
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background-color: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background-color: #6b7280; }
+
+        /* Styles for the dual-layer input area */
+        .input-container {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            font-size: 1rem; /* text-base */
+            line-height: 1.5;
         }
-        ::-webkit-scrollbar-track {
-            background: #1f2937;
-        }
-        ::-webkit-scrollbar-thumb {
-            background-color: #4b5563;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background-color: #6b7280;
+        @media (min-width: 768px) {
+            .input-container { font-size: 1.125rem; } /* md:text-lg */
         }
 
-        /* Styles for the contenteditable div (our new input area) */
-        #inputArea {
-            -webkit-box-shadow: none;
-            -moz-box-shadow: none;
-            box-shadow: none;
-            outline: none;
-            resize: none;
-            line-height: 1.5;
+        #highlightingArea, #inputArea, #autocomplete-mirror {
             padding: 1rem;
-            color: #d1d5db; /* Light gray text */
-            background-color: #111827; /* Dark background */
-            white-space: pre-wrap; /* Preserve whitespace and line breaks */
-            caret-color: #fff; /* White cursor */
-            overflow-y: auto; /* Enable scrolling */
+            margin: 0;
+            border: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            overflow-y: auto;
+            position: absolute;
+            top: 0; right: 0; bottom: 0; left: 0;
+            border-radius: 0.75rem; /* rounded-xl */
+            font: inherit; /* Ensure all layers use the container's font settings */
         }
+        
+        #highlightingArea {
+            background-color: #111827; /* gray-900 */
+            z-index: 1;
+            pointer-events: none; /* Clicks go through to the input area */
+            color: #d1d5db; /* Default text color */
+        }
+        
+        #highlightingArea > div {
+            min-height: 1.5em; /* Match line-height to prevent collapse of empty lines */
+        }
+
+        #inputArea {
+            z-index: 2;
+            background-color: transparent;
+            color: transparent; /* Make the actual text invisible */
+            caret-color: #fff; /* But keep the cursor visible */
+            resize: none;
+            outline: none;
+        }
+
+        /* ADDED: Styles for the invisible mirror div used for cursor positioning */
+        #autocomplete-mirror {
+            z-index: -1; /* Keep it out of sight and non-interactive */
+            visibility: hidden;
+            pointer-events: none;
+        }
+
+
         /* Style for the syntax-highlighted spans */
-        #inputArea .variable-new, .output-highlight .variable-new {
-            color: #60a5fa; /* Blue */
-        }
-        #inputArea .variable-redefined, .output-highlight .variable-redefined {
-            color: #f87171; /* Red */
-        }
-        #inputArea .variable-used, .output-highlight .variable-used {
-            color: #fb923c; /* Orange-400 */
-        }
-        #inputArea .comment, .output-highlight .comment {
-            color: #facc15; /* Yellow */
-        }
-        #inputArea .operator, .output-highlight .operator {
-            color: #a1a1aa; /* Gray-400 for operators like = */
-        }
-        #inputArea .keyword, .output-highlight .keyword {
-            color: #c084fc; /* Purple-400 for keywords like 'today' and 'to' */
-        }
-        #inputArea .unit, .output-highlight .unit {
-            color: #2dd4bf; /* Teal-400 for units like 'usd', 'm', 'days' */
-        }
+        .variable-new { color: #60a5fa; } .variable-redefined { color: #f87171; } .variable-used { color: #fb923c; } .comment { color: #facc15; } .operator { color: #a1a1aa; } .keyword { color: #c084fc; } .unit { color: #2dd4bf; }
         
         /* Styles for Autocomplete Popup */
         #autocomplete-popup {
-            position: absolute;
-            z-index: 100;
-            background-color: #1f2937; /* gray-800 */
-            border: 1px solid #374151; /* gray-700 */
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            max-height: 200px;
-            overflow-y: auto;
-            min-width: 150px;
+            position: absolute; z-index: 100; background-color: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); max-height: 200px; overflow-y: auto; min-width: 150px;
         }
-        .autocomplete-item {
-            padding: 0.5rem 1rem;
-            cursor: pointer;
-            color: #d1d5db; /* gray-300 */
-        }
-        .autocomplete-item:hover, .autocomplete-item.selected {
-            background-color: #4f46e5; /* indigo-600 */
-            color: white;
-        }
+        .autocomplete-item { padding: 0.5rem 1rem; cursor: pointer; color: #d1d5db; }
+        .autocomplete-item:hover, .autocomplete-item.selected { background-color: #4f46e5; color: white; }
         
         /* Custom styles for the toggle switch */
         .toggle-switch-container { display: inline-block; height: 24px; position: relative; width: 48px; }
@@ -100,47 +95,20 @@
         input:checked + .toggle-slider:before { transform: translateX(24px); }
 
         /* Styles for collapsible loops */
-        .loop-header {
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-        }
-        .toggle-icon {
-            margin-right: 0.5rem;
-            color: #9ca3af; /* gray-400 */
-            transition: transform 0.2s;
-            width: 1rem; 
-        }
-        .toggle-icon.expanded {
-            transform: rotate(90deg);
-        }
+        .loop-header { cursor: pointer; display: flex; align-items: center; }
+        .toggle-icon { margin-right: 0.5rem; color: #9ca3af; transition: transform 0.2s; width: 1rem; }
+        .toggle-icon.expanded { transform: rotate(90deg); }
         
         /* Styles for Help Modal Content */
-        #help-content h5 {
-            font-size: 1.125rem; /* text-lg */
-            font-weight: 600; /* font-semibold */
-            color: #c084fc; /* purple-400 */
-            margin-top: 1.25rem;
-            margin-bottom: 0.75rem;
-            border-bottom: 1px solid #4b5563; /* gray-600 */
-            padding-bottom: 0.25rem;
-        }
-        #help-content code {
-            display: block;
-            background-color: #111827; /* gray-900 */
-            padding: 0.75rem;
-            border-radius: 0.375rem; /* rounded-md */
-            margin-top: 0.5rem;
-            white-space: pre-wrap;
-            font-family: 'Courier New', Courier, monospace;
-            color: #9ca3af; /* gray-400 */
-        }
-        #help-content p {
-            margin-bottom: 0.5rem;
-        }
-        #help-content strong {
-            color: #a5b4fc; /* indigo-300 */
-            font-weight: 500;
+        #help-content h5 { font-size: 1.125rem; font-weight: 600; color: #c084fc; margin-top: 1.25rem; margin-bottom: 0.75rem; border-bottom: 1px solid #4b5563; padding-bottom: 0.25rem; }
+        #help-content code { display: block; background-color: #111827; padding: 0.75rem; border-radius: 0.375rem; margin-top: 0.5rem; white-space: pre-wrap; font-family: 'Courier New', Courier, monospace; color: #9ca3af; }
+        #help-content p { margin-bottom: 0.5rem; }
+        #help-content strong { color: #a5b4fc; font-weight: 500; }
+
+        /* Style for line highlighting on hover */
+        .line-highlight {
+            background-color: rgba(75, 85, 99, 0.5); /* gray-600 with 50% opacity */
+            transition: background-color 0.1s ease-in-out;
         }
     </style>
 </head>
@@ -154,8 +122,11 @@
                 <button id="eraseButton" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg shadow-lg hover:bg-red-700 flex-shrink-0">Erase</button>
             </div>
             
-            <div class="relative flex-1 min-h-0">
-                <div id="inputArea" contenteditable="true" class="w-full h-full rounded-xl bg-gray-900 text-gray-200 font-mono text-base md:text-lg"></div>
+            <div class="input-container">
+                <div id="highlightingArea" aria-hidden="true"></div>
+                <!-- ADDED: The mirror div for cursor position calculation -->
+                <div id="autocomplete-mirror" aria-hidden="true"></div>
+                <textarea id="inputArea" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
                 <div id="autocomplete-popup" class="hidden"></div>
             </div>
         </div>
@@ -202,7 +173,6 @@
         <div class="mt-4 flex flex-wrap justify-center gap-2">
             <button id="saveToFileButton" class="bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 flex-grow sm:flex-grow-0">Save to File</button>
             <button id="loadFromFileButton" class="bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 flex-grow sm:flex-grow-0">Load from File</button>
-            <!-- MODIFIED: Added Share button -->
             <button id="shareButton" class="bg-teal-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-teal-700 flex-grow sm:flex-grow-0">Share</button>
             <button id="helpButton" class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg shadow-md hover:bg-purple-700 flex-grow sm:flex-grow-0">Show Help</button>
         </div>
@@ -220,9 +190,7 @@
             </div>
         </div>
     </div>
-    
     <div id="message-box" class="fixed top-4 left-1/2 -translate-x-1/2 p-4 bg-gray-800 text-white rounded-lg shadow-lg z-50 hidden opacity-0 transition-opacity duration-300"><p id="message-text"></p></div>
-
     <div id="help-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
         <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-2xl border border-gray-700 flex flex-col max-h-[80vh]">
             <h4 class="text-2xl font-bold mb-4 text-white">Insta-Clone Help</h4>
@@ -239,6 +207,7 @@
         const $ = (selector) => document.querySelector(selector);
         
         const inputArea = $('#inputArea');
+        const highlightingArea = $('#highlightingArea');
         const outputArea = $('#outputArea');
         const eraseButton = $('#eraseButton');
         const calculationNameInput = $('#calculationNameInput');
@@ -254,652 +223,183 @@
         const saveToFileButton = $('#saveToFileButton');
         const loadFromFileButton = $('#loadFromFileButton');
         const fileLoaderInput = $('#fileLoader');
-        const shareButton = $('#shareButton'); // ADDED
+        const shareButton = $('#shareButton');
 
         let variables = {};
         let wakeLock = null;
-        let autocompleteState = { active: false, suggestions: [], selectedIndex: -1, wordStartIndex: -1 };
+        let autocompleteState = { active: false, suggestions: [], selectedIndex: -1, wordStartIndex: -1, currentWord: '' };
         
-        const HELP_CONTENT_INPUT = `// Welcome to Insta-Clone!
-// Variables are NOT case-sensitive.
-// For example, 'cost' and 'Cost' are the same.
-
-Cost = 150
-tax_rate = 10
-total = Cost + tax_rate%`;
-
+        const HELP_CONTENT_INPUT = `// Welcome to Insta-Clone!\n// Variables are NOT case-sensitive.\n// For example, 'cost' and 'Cost' are the same.\n\nCost = 150\ntax_rate = 10\ntotal = Cost + tax_rate%`;
         const HELP_CONTENT_POPUP_HTML = `
             <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and more. Type on the left and see the results on the right.</p>
-            
-            <h5>Getting Started: The Basics</h5>
-            <p><strong>Variables:</strong> Names are <strong>not case-sensitive</strong> (so <code>rent</code> and <code>Rent</code> are the same).</p>
-            <code>rent = 1200
-utilities = 250
-total_cost = Rent + utilities</code>
-
-            <p><strong>Math Operations:</strong> Use standard operators like <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code> and group with parentheses <code>()</code>.</p>
-            <code>(100 - 25) * 2</code>
-
-            <p><strong>Comments:</strong> Use <code>//</code> to add notes. Anything after it on a line is ignored.</p>
-            <code>income = 5000 // Gross monthly salary</code>
-
-            <h5>Advanced Calculations</h5>
-            <p><strong>Percentages:</strong> Easily add, subtract, or find a percentage.</p>
-            <code>500 + 10%       // Adds 10% of 500
-120 - 25%       // Subtracts 25% of 120
-15% of 300      // Calculates 15% of 300</code>
-
-            <p><strong>Date Math:</strong> Use the <code>today</code> keyword to find future or past dates.</p>
-            <code>project_due = today + 90 days
-last_meeting = today - 3 weeks</code>
-
-            <p><strong>Unit Conversions:</strong> Convert values using the format: <code>value from_unit to to_unit</code>.</p>
-            <code>100 usd to gbp
-2.5 m to ft
-10 cm to inch</code>
-
-            <h5>Automating with Loops</h5>
-            <p><strong>For Loops:</strong> Run code multiple times with <code>for variable = start to end</code> and finish with <code>endfor</code>.</p>
-            <code>total = 0
-for i = 1 to 5
-  total = total + i
-endfor</code>
-
-            <h5>Managing Your Work</h5>
-            <p><strong>Calculation Name:</strong> Edit the name at the top-left. This is used when saving to a file.</p>
-            <p><strong>Quick Save & Load:</strong> Use the "Save 1/2/3" and "Load 1/2/3" buttons for quick storage in your browser.</p>
-            <p><strong>Save & Load from File:</strong> Use "Save to File" to download your work. Use "Load from File" to open it later.</p>
-            <p><strong>Share:</strong> Click "Share" to copy a unique link to your clipboard. Anyone with the link will see your exact calculation.</p>
-            
-            <h5>Interface & Tips</h5>
-            <p><strong>Autocomplete:</strong> Start typing a variable or keyword and a suggestion box will appear. Press <strong>Tab</strong> or <strong>Enter</strong> to accept.</p>
-            <p><strong>Collapsible Results:</strong> In the Results panel, click the '►' icon on a loop header to expand or collapse its output.</p>
-            <p><strong>Rounding Toggle:</strong> Enable this to format all decimal results to two decimal places.</p>
-            <p><strong>No Sleep Toggle:</strong> Enable this to prevent your device's screen from turning off.</p>
+            <h5>Getting Started: The Basics</h5><p><strong>Variables:</strong> Names are <strong>not case-sensitive</strong> (so <code>rent</code> and <code>Rent</code> are the same).</p><code>rent = 1200\nutilities = 250\ntotal_cost = Rent + utilities</code>
+            <p><strong>Math Operations:</strong> Use standard operators like <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code> and group with parentheses <code>()</code>.</p><code>(100 - 25) * 2</code>
+            <p><strong>Comments:</strong> Use <code>//</code> to add notes. Anything after it on a line is ignored.</p><code>income = 5000 // Gross monthly salary</code>
+            <h5>Advanced Calculations</h5><p><strong>Percentages:</strong> Easily add, subtract, or find a percentage.</p><code>500 + 10%       // Adds 10% of 500\n120 - 25%       // Subtracts 25% of 120\n15% of 300      // Calculates 15% of 300</code>
+            <p><strong>Date Math:</strong> Use the <code>today</code> keyword to find future or past dates.</p><code>project_due = today + 90 days\nlast_meeting = today - 3 weeks</code>
+            <p><strong>Unit Conversions:</strong> Convert values using the format: <code>value from_unit to to_unit</code>.</p><code>100 usd to gbp\n2.5 m to ft\n10 cm to inch</code>
+            <h5>Automating with Loops</h5><p><strong>For Loops:</strong> Run code multiple times with <code>for variable = start to end</code> and finish with <code>endfor</code>.</p><code>total = 0\nfor i = 1 to 5\n  total = total + i\nendfor</code>
+            <h5>Managing Your Work</h5><p><strong>Calculation Name:</strong> Edit the name at the top-left. This is used when saving to a file.</p><p><strong>Quick Save & Load:</strong> Use the "Save 1/2/3" and "Load 1/2/3" buttons for quick storage in your browser.</p><p><strong>Save & Load from File:</strong> Use "Save to File" to download your work. Use "Load from File" to open it later.</p><p><strong>Share:</strong> Click "Share" to copy a unique link to your clipboard. Anyone with the link will see your exact calculation.</p>
+            <h5>Interface & Tips</h5><p><strong>Autocomplete:</strong> Start typing a variable or keyword and a suggestion box will appear. Press <strong>Tab</strong> or <strong>Enter</strong> to accept.</p><p><strong>Line Highlighting:</strong> Hover your mouse over a line in the Results panel to see the corresponding input line highlighted.</p><p><strong>Collapsible Results:</strong> In the Results panel, click the '►' icon on a loop header to expand or collapse its output.</p><p><strong>Rounding Toggle:</strong> Enable this to format all decimal results to two decimal places.</p><p><strong>No Sleep Toggle:</strong> Enable this to prevent your device's screen from turning off.</p>
         `;
 
         const inchRates = { cm: 2.54, m: 0.0254, ft: 1/12 };
         const conversionRates = {
-            // Currency
             usd: { eur: 0.92, gbp: 0.78 }, eur: { usd: 1.09, gbp: 0.85 }, gbp: { usd: 1.28, eur: 1.17 },
-            // Length
-            m: { ft: 3.28084, cm: 100, in: 39.3701, inch: 39.3701 },
-            ft: { m: 0.3048, cm: 30.48, in: 12, inch: 12 },
-            cm: { m: 0.01, ft: 0.0328084, in: 0.393701, inch: 0.393701 },
-            in: inchRates,
-            inch: inchRates,
-            // Weight
+            m: { ft: 3.28084, cm: 100, in: 39.3701, inch: 39.3701 }, ft: { m: 0.3048, cm: 30.48, in: 12, inch: 12 }, cm: { m: 0.01, ft: 0.0328084, in: 0.393701, inch: 0.393701 }, in: inchRates, inch: inchRates,
             kg: { lb: 2.20462 }, lb: { kg: 0.453592 },
         };
 
         const specialWords = {
             'today': 'keyword', 'to': 'keyword', 'for': 'keyword', 'endfor': 'keyword', 'of': 'keyword',
-            'usd': 'unit', 'eur': 'unit', 'gbp': 'unit',
-            'm': 'unit', 'ft': 'unit', 'cm': 'unit', 'kg': 'unit', 'lb': 'unit', 'in': 'unit', 'inch': 'unit',
-            'days': 'unit', 'day': 'unit', 'weeks': 'unit', 'week': 'unit', 'months': 'unit', 'month': 'unit',
-            'years': 'unit', 'year': 'unit', 'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
+            'usd': 'unit', 'eur': 'unit', 'gbp': 'unit', 'm': 'unit', 'ft': 'unit', 'cm': 'unit', 'kg': 'unit', 'lb': 'unit', 'in': 'unit', 'inch': 'unit',
+            'days': 'unit', 'day': 'unit', 'weeks': 'unit', 'week': 'unit', 'months': 'unit', 'month': 'unit', 'years': 'unit', 'year': 'unit', 'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
         };
 
-        const setDefaultCalculationName = () => {
-            const today = new Date();
-            const mm = String(today.getMonth() + 1).padStart(2, '0');
-            const dd = String(today.getDate()).padStart(2, '0');
-            const yy = today.getFullYear().toString().slice(-2);
-            calculationNameInput.value = `Insta-Clone ${mm}-${dd}-${yy}`;
-        };
-
-        const getAutocompleteKeywords = (textContent) => {
-            const orderedVars = [];
-            textContent.split('\n').forEach(line => {
-                const match = line.trim().match(/^([a-zA-Z_]\w*)\s*=/);
-                if (match) {
-                    const varName = match[1].toLowerCase();
-                    const existingIndex = orderedVars.indexOf(varName);
-                    if (existingIndex > -1) orderedVars.splice(existingIndex, 1);
-                    orderedVars.push(varName);
-                }
-            });
-            const newestVarsFirst = orderedVars.reverse();
-            const specialKeywordsList = Object.keys(specialWords);
-            return [...newestVarsFirst, ...specialKeywordsList.filter(k => !orderedVars.includes(k))];
-        };
-        
         // --- Helper Functions ---
-
-        const showMessage = (text) => {
-            $('#message-text').textContent = text;
-            messageBox.classList.remove('hidden');
-            setTimeout(() => messageBox.classList.remove('opacity-0'), 10);
-            setTimeout(() => { messageBox.classList.add('opacity-0'); setTimeout(() => messageBox.classList.add('hidden'), 3000); }, 3000);
-        };
-
-        const calculate = (expression) => {
-            if (!expression) return undefined;
-            // Handle "15% of 300"
-            const percentageOfMatch = expression.match(/(\d+(?:\.\d+)?)%\s*of\s*(\d+(?:\.\d+)?)/i);
-            if (percentageOfMatch) {
-                const [, perc, num] = percentageOfMatch;
-                return (parseFloat(perc) / 100) * parseFloat(num);
-            }
-            const conversionMatch = expression.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*to\s*([a-zA-Z]+)$/);
-            if (conversionMatch) {
-                const [, value, fromUnit, toUnit] = conversionMatch.map(s => s.toLowerCase());
-                if (conversionRates[fromUnit]?.[toUnit]) return parseFloat(value) * conversionRates[fromUnit][toUnit];
-                return `Error: Unsupported conversion.`;
-            }
-            expression = expression.replace(/(\d+(?:\.\d+)?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)%/g, (match, base, op, perc) => {
-                const p = parseFloat(perc) / 100;
-                return op === '+' || op === '-' ? `${base} ${op} (${base} * ${p})` : `${base} ${op} ${p}`;
-            });
-            try {
-                const result = new Function(`return ${expression}`)();
-                return (typeof result === 'number' && !isNaN(result)) ? result : undefined;
-            } catch { return undefined; }
-        };
-
-        const replaceVariables = (expression) => {
-            return Object.keys(variables).sort((a, b) => b.length - a.length)
-                .reduce((expr, key) => expr.replace(new RegExp(`\\b${key}\\b`, 'gi'), variables[key]), expression);
-        };
+        const setDefaultCalculationName = () => { const today = new Date(); const mm = String(today.getMonth() + 1).padStart(2, '0'); const dd = String(today.getDate()).padStart(2, '0'); const yy = today.getFullYear().toString().slice(-2); calculationNameInput.value = `Insta-Clone ${mm}-${dd}-${yy}`; };
+        const showMessage = (text) => { $('#message-text').textContent = text; messageBox.classList.remove('hidden'); setTimeout(() => messageBox.classList.remove('opacity-0'), 10); setTimeout(() => { messageBox.classList.add('opacity-0'); setTimeout(() => messageBox.classList.add('hidden'), 3000); }, 3000); };
         
-        const evaluateLine = (line) => {
-            line = line.trim();
-            if (!line || line.startsWith('//') || line.startsWith('for') || line === 'endfor') return null;
+        // --- Core Calculation Engine (Unchanged) ---
+        const calculate = (expression) => { if (!expression) return undefined; const pOfMatch = expression.match(/(\d+(?:\.\d+)?)%\s*of\s*(\d+(?:\.\d+)?)/i); if (pOfMatch) { const [, perc, num] = pOfMatch; return (parseFloat(perc) / 100) * parseFloat(num); } const convMatch = expression.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*to\s*([a-zA-Z]+)$/); if (convMatch) { const [, v, from, to] = convMatch.map(s => s.toLowerCase()); if (conversionRates[from]?.[to]) return parseFloat(v) * conversionRates[from][to]; return `Error: Unsupported conversion.`; } expression = expression.replace(/(\d+(?:\.\d+)?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)%/g, (m, b, op, p) => (op === '+' || op === '-') ? `${b} ${op} (${b} * ${parseFloat(p) / 100})` : `${b} ${op} ${parseFloat(p) / 100}`); try { const result = new Function(`return ${expression}`)(); return (typeof result === 'number' && !isNaN(result)) ? result : undefined; } catch { return undefined; } };
+        const replaceVariables = (expr) => Object.keys(variables).sort((a, b) => b.length - a.length).reduce((e, key) => e.replace(new RegExp(`\\b${key}\\b`, 'gi'), variables[key]), expr);
+        const evaluateLine = (line) => { line = line.trim(); if (!line || line.startsWith('//') || line.startsWith('for') || line === 'endfor') return null; const assignMatch = line.match(/^([a-zA-Z_]\w*)\s*=\s*(.*)$/); if (assignMatch) { const [, varName, expr] = assignMatch; const result = calculate(replaceVariables(expr.trim())); variables[varName.toLowerCase()] = result; return result; } const dateMatch = line.match(/^today\s*([+\-])\s*([a-zA-Z_]\w*|\d+)\s*(days?|weeks?|months?|years?)$/i); if (dateMatch) { const [, op, val, unit] = dateMatch; const num = isNaN(val) ? parseInt(variables[val.toLowerCase()], 10) : parseInt(val, 10); if (isNaN(num)) return `Error: Invalid number.`; const today = new Date(); const mult = op === '+' ? 1 : -1; const u = unit.toLowerCase(); if (u.startsWith('day')) today.setDate(today.getDate() + num * mult); else if (u.startsWith('week')) today.setDate(today.getDate() + num * 7 * mult); else if (u.startsWith('month')) today.setMonth(today.getMonth() + num * mult); else if (u.startsWith('year')) today.setFullYear(today.getFullYear() + num * mult); return today.toDateString(); } return calculate(replaceVariables(line)); };
+        const formatResult = (r) => { if (typeof r === 'number' && roundingToggle.checked && !Number.isInteger(r)) return r.toFixed(2); return (r === undefined || r === null) ? '' : r; };
 
-            const assignmentMatch = line.match(/^([a-zA-Z_]\w*)\s*=\s*(.*)$/);
-            if (assignmentMatch) {
-                const [, varName, expression] = assignmentMatch;
-                const result = calculate(replaceVariables(expression.trim()));
-                variables[varName.toLowerCase()] = result;
-                return result;
-            }
-            const dateMatch = line.match(/^today\s*([+\-])\s*([a-zA-Z_]\w*|\d+)\s*(days?|weeks?|months?|years?)$/i);
-            if (dateMatch) {
-                const [, operator, valuePart, unit] = dateMatch;
-                const value = isNaN(valuePart) ? parseInt(variables[valuePart.toLowerCase()], 10) : parseInt(valuePart, 10);
-                if (isNaN(value)) return `Error: Invalid number.`;
-                const today = new Date();
-                const mult = operator === '+' ? 1 : -1;
-                const u = unit.toLowerCase();
-                if (u.startsWith('day')) today.setDate(today.getDate() + value * mult);
-                else if (u.startsWith('week')) today.setDate(today.getDate() + value * 7 * mult);
-                else if (u.startsWith('month')) today.setMonth(today.getMonth() + value * mult);
-                else if (u.startsWith('year')) today.setFullYear(today.getFullYear() + value * mult);
-                return today.toDateString();
-            }
-            return calculate(replaceVariables(line));
-        };
-        
-        const formatResult = (result) => {
-            if (typeof result === 'number' && roundingToggle.checked) {
-                if (!Number.isInteger(result)) return result.toFixed(2);
-            }
-            if (result === undefined || result === null) return '';
-            return result;
-        };
+        // --- Syntax Highlighting Logic ---
+        const highlightText = (line, definedVars) => { const escapeHtml = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); const cIdx = line.indexOf('//'); const code = cIdx !== -1 ? line.substring(0, cIdx) : line; const comment = cIdx !== -1 ? `<span class="comment">${escapeHtml(line.substring(cIdx))}</span>` : ''; const varNameOnLine = (code.trim().match(/^([a-zA-Z_]\w*)\s*=/) || [])[1]?.toLowerCase(); const tokens = code.split(/(\b[a-zA-Z_]\w*\b|=|\s+)/).filter(Boolean); const processed = tokens.map(t => { const trimmed = t.trim().toLowerCase(); if (!t.trim()) return t; if (t === '=') return `<span class="operator">${t}</span>`; if (specialWords[trimmed]) return `<span class="${specialWords[trimmed]}">${escapeHtml(t)}</span>`; if (trimmed === varNameOnLine) return `<span class="${definedVars.has(trimmed) ? 'variable-redefined' : 'variable-new'}">${escapeHtml(t)}</span>`; if (definedVars.has(trimmed)) return `<span class="variable-used">${escapeHtml(t)}</span>`; return escapeHtml(t); }).join(''); return processed + comment; };
 
-        const highlightText = (line, definedVars) => {
-            const escapeHtml = (text) => text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            const commentIndex = line.indexOf('//');
-            const codePart = commentIndex !== -1 ? line.substring(0, commentIndex) : line;
-            const commentPart = commentIndex !== -1 ? `<span class="comment">${escapeHtml(line.substring(commentIndex))}</span>` : '';
-            const assignmentMatch = codePart.trim().match(/^([a-zA-Z_]\w*)\s*=/);
-            const varNameOnLine = assignmentMatch ? assignmentMatch[1].toLowerCase() : null;
-            
-            const tokens = codePart.split(/(\b[a-zA-Z_]\w*\b|=|\s+)/).filter(Boolean);
+        // --- Main Processing Function ---
+        const processAndHighlight = () => {
+            const text = inputArea.value;
+            const lines = text.split('\n');
 
-            const processedCode = tokens.map(token => {
-                const trimmedToken = token.trim().toLowerCase();
-                if (token.trim() === '') return token;
-                if (token === '=') return `<span class="operator">${token}</span>`;
-                if (specialWords[trimmedToken]) return `<span class="${specialWords[trimmedToken]}">${escapeHtml(token)}</span>`;
-                if (trimmedToken === varNameOnLine) {
-                    return `<span class="${definedVars.has(trimmedToken) ? 'variable-redefined' : 'variable-new'}">${escapeHtml(token)}</span>`;
+            // 1. Update Highlighting Layer
+            const definedVariables = new Set();
+            const highlightedHTML = lines.map((line, index) => {
+                const highlightedLine = highlightText(line, definedVariables);
+                const varNameMatch = line.trim().match(/^([a-zA-Z_]\w*)\s*=/);
+                if (varNameMatch) {
+                    definedVariables.add(varNameMatch[1].toLowerCase());
                 }
-                if (definedVars.has(trimmedToken)) {
-                    return `<span class="variable-used">${escapeHtml(token)}</span>`;
-                }
-                return escapeHtml(token);
+                return `<div data-line-id="${index}">${highlightedLine || '<br>'}</div>`;
             }).join('');
-            return processedCode + commentPart;
-        };
+            highlightingArea.innerHTML = highlightedHTML;
 
-        const processInput = () => {
-            highlightInput();
-            variables = {};
-            const lines = inputArea.textContent.split('\n');
-            let outputHTML = '';
-            let loopIdCounter = 0;
-
+            // 2. Update Calculation Results
+            variables = {}; let outputHTML = ''; let loopIdCounter = 0;
             for (let i = 0; i < lines.length; i++) {
-                const line = lines[i];
-                const trimmedLine = line.trim();
-                const forLoopMatch = trimmedLine.match(/^for\s+([a-zA-Z_]\w*)\s*=\s*(.*?)\s+to\s+(.*?)\s*$/i);
-
+                const line = lines[i]; const trimmedLine = line.trim(); const forLoopMatch = trimmedLine.match(/^for\s+([a-zA-Z_]\w*)\s*=\s*(.*?)\s+to\s+(.*?)\s*$/i);
                 if (forLoopMatch) {
-                    loopIdCounter++;
-                    const loopBodyId = `loop-body-${loopIdCounter}`;
-                    const [, iterator, startExpr, endExpr] = forLoopMatch;
-                    const iteratorLower = iterator.toLowerCase();
-                    let endforIndex = -1;
-                    let nestingLevel = 0;
-                    for (let j = i + 1; j < lines.length; j++) {
-                        if (lines[j].trim().match(/^for\s/i)) nestingLevel++;
-                        if (lines[j].trim().toLowerCase() === 'endfor') {
-                            if (nestingLevel === 0) { endforIndex = j; break; } else { nestingLevel--; }
-                        }
-                    }
-
-                    if (endforIndex === -1) {
-                        outputHTML += `<div class="text-red-400">Error: Missing 'endfor'.</div>`;
-                        continue;
-                    }
-                    
-                    const highlightedHeader = highlightText(line, new Set(Object.keys(variables)));
-                    outputHTML += `<div class="loop-header" data-target-id="${loopBodyId}"><span class="toggle-icon">►</span><div class="flex items-start output-highlight flex-1"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedHeader}</span></div></div>`;
-
-                    let loopBodyHTML = '';
-                    const loopBodyLines = lines.slice(i + 1, endforIndex);
-                    const startValue = Math.round(calculate(replaceVariables(startExpr.trim())));
-                    const endValue = Math.round(calculate(replaceVariables(endExpr.trim())));
-
-                    if (isNaN(startValue) || isNaN(endValue)) {
-                        loopBodyHTML = `<div class="text-red-400 ml-8">Error: Loop bounds must be numbers.</div>`;
-                    } else {
-                        for (let k = startValue; k <= endValue; k++) {
-                            variables[iteratorLower] = k;
-                            loopBodyLines.forEach(bodyLine => {
-                                const result = evaluateLine(bodyLine);
-                                const highlightedBodyLine = highlightText(bodyLine, new Set(Object.keys(variables)));
-                                if (result !== null && result !== undefined) {
-                                    loopBodyHTML += `<div class="flex items-start output-highlight ml-8"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1">${highlightedBodyLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`;
-                                } else if (bodyLine.trim()) {
-                                    loopBodyHTML += `<div class="flex items-start output-highlight ml-8"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedBodyLine}</span></div>`;
-                                } else {
-                                    loopBodyHTML += `<div class="h-6 ml-8"></div>`;
-                                }
-                            });
-                        }
-                        delete variables[iteratorLower];
-                    }
-                    
-                    loopBodyHTML += `<div class="flex items-start output-highlight"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightText(lines[endforIndex], new Set(Object.keys(variables)))}</span></div>`;
-                    outputHTML += `<div id="${loopBodyId}" class="loop-body hidden">${loopBodyHTML}</div>`;
-                    i = endforIndex;
-
-                } else if (trimmedLine.toLowerCase() === 'endfor') {
-                    outputHTML += `<div class="text-red-400">Error: Unexpected 'endfor'.</div>`;
+                    loopIdCounter++; const loopBodyId = `loop-body-${loopIdCounter}`; const [, iterator, startExpr, endExpr] = forLoopMatch; const iteratorLower = iterator.toLowerCase(); let endforIndex = -1; let nestingLevel = 0; for (let j = i + 1; j < lines.length; j++) { if (lines[j].trim().match(/^for\s/i)) nestingLevel++; if (lines[j].trim().toLowerCase() === 'endfor') { if (nestingLevel === 0) { endforIndex = j; break; } else { nestingLevel--; } } }
+                    if (endforIndex === -1) { outputHTML += `<div class="text-red-400 output-line" data-line-id="${i}">Error: Missing 'endfor'.</div>`; continue; }
+                    const highlightedHeader = highlightText(line, new Set(Object.keys(variables))); outputHTML += `<div class="loop-header output-line" data-line-id="${i}" data-target-id="${loopBodyId}"><span class="toggle-icon">►</span><div class="flex items-start output-highlight flex-1"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedHeader}</span></div></div>`;
+                    let loopBodyHTML = ''; const loopBodyLines = lines.slice(i + 1, endforIndex); const startValue = Math.round(calculate(replaceVariables(startExpr.trim()))); const endValue = Math.round(calculate(replaceVariables(endExpr.trim())));
+                    if (isNaN(startValue) || isNaN(endValue)) { loopBodyHTML = `<div class="text-red-400 ml-8">Error: Loop bounds must be numbers.</div>`; } else { for (let k = startValue; k <= endValue; k++) { variables[iteratorLower] = k; loopBodyLines.forEach(bodyLine => { const result = evaluateLine(bodyLine); const highlightedBodyLine = highlightText(bodyLine, new Set(Object.keys(variables))); if (result !== null && result !== undefined) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1">${highlightedBodyLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`; } else if (bodyLine.trim()) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedBodyLine}</span></div>`; } else { loopBodyHTML += `<div class="h-6 ml-8"></div>`; } }); } delete variables[iteratorLower]; }
+                    loopBodyHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${endforIndex}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightText(lines[endforIndex], new Set(Object.keys(variables)))}</span></div>`; outputHTML += `<div id="${loopBodyId}" class="loop-body hidden">${loopBodyHTML}</div>`; i = endforIndex;
+                } else if (trimmedLine.toLowerCase() === 'endfor') { outputHTML += `<div class="text-red-400 output-line" data-line-id="${i}">Error: Unexpected 'endfor'.</div>`;
                 } else {
-                    if (!trimmedLine) {
-                        outputHTML += `<div class="h-6"></div>`;
-                    } else {
-                        const lineVars = new Set(Object.keys(variables));
-                        const result = evaluateLine(line);
-                        const highlightedLine = highlightText(line, lineVars);
-                        if (result !== null && result !== undefined) {
-                            outputHTML += `<div class="flex items-start output-highlight"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1">${highlightedLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`;
-                        } else {
-                            outputHTML += `<div class="flex items-start output-highlight"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedLine}</span></div>`;
-                        }
-                    }
+                    if (!trimmedLine) { outputHTML += `<div class="h-6 output-line" data-line-id="${i}"></div>`; } else { const lineVars = new Set(Object.keys(variables)); const result = evaluateLine(line); const highlightedLine = highlightText(line, lineVars); if (result !== null && result !== undefined) { outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1">${highlightedLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`; } else { outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedLine}</span></div>`; } }
                 }
             }
             outputArea.innerHTML = outputHTML || '<div class="text-gray-400">Your results will appear here in real-time.</div>';
         };
-
-        const highlightInput = () => {
-            const selection = window.getSelection();
-            const savedOffset = (selection.rangeCount > 0) ? (() => {
-                const range = selection.getRangeAt(0).cloneRange();
-                range.selectNodeContents(inputArea);
-                range.setEnd(selection.getRangeAt(0).startContainer, selection.getRangeAt(0).startOffset);
-                return range.toString().length;
-            })() : 0;
-
-            const definedVariables = new Set();
-            const lines = inputArea.textContent.split('\n');
-            const highlightedLines = lines.map(line => {
-                const highlighted = highlightText(line, definedVariables);
-                const assignmentMatch = line.trim().match(/^([a-zA-Z_]\w*)\s*=/);
-                if (assignmentMatch) definedVariables.add(assignmentMatch[1].toLowerCase());
-                return highlighted;
-            });
-            
-            inputArea.innerHTML = highlightedLines.join('\n');
-
-            let charCount = 0;
-            const newRange = document.createRange();
-            const treeWalker = document.createTreeWalker(inputArea, NodeFilter.SHOW_TEXT);
-            let node;
-            while (node = treeWalker.nextNode()) {
-                if (charCount + node.length >= savedOffset) {
-                    newRange.setStart(node, savedOffset - charCount);
-                    newRange.collapse(true);
-                    selection.removeAllRanges();
-                    selection.addRange(newRange);
-                    return;
-                }
-                charCount += node.length;
-            }
-            newRange.selectNodeContents(inputArea);
-            newRange.collapse(false);
-            selection.removeAllRanges();
-            selection.addRange(newRange);
-        };
-
-        // --- Autocomplete ---
+        
+        // --- Autocomplete Logic ---
+        const getAutocompleteKeywords = (textContent) => { const orderedVars = []; textContent.split('\n').forEach(line => { const match = line.trim().match(/^([a-zA-Z_]\w*)\s*=/); if (match) { const varName = match[1].toLowerCase(); const existingIndex = orderedVars.indexOf(varName); if (existingIndex > -1) orderedVars.splice(existingIndex, 1); orderedVars.push(varName); } }); const newestVarsFirst = orderedVars.reverse(); const specialKeywordsList = Object.keys(specialWords); return [...newestVarsFirst, ...specialKeywordsList.filter(k => !orderedVars.includes(k))]; };
+        
+        // REWRITTEN: Autocomplete positioning using the mirror technique
         function updateAutocompletePopup() {
-            if (!autocompleteState.active || autocompleteState.suggestions.length === 0) return autocompletePopup.classList.add('hidden');
+            if (!autocompleteState.active || autocompleteState.suggestions.length === 0) {
+                return autocompletePopup.classList.add('hidden');
+            }
             autocompletePopup.innerHTML = autocompleteState.suggestions.map((s, i) => `<div class="autocomplete-item ${i === autocompleteState.selectedIndex ? 'selected' : ''}" data-index="${i}">${s}</div>`).join('');
-            const range = window.getSelection().getRangeAt(0);
-            const rect = range.getBoundingClientRect();
+
+            const mirror = $('#autocomplete-mirror');
+            const text = inputArea.value;
+            const cursorPos = inputArea.selectionStart;
+
+            mirror.style.width = `${inputArea.clientWidth}px`;
+            mirror.scrollTop = inputArea.scrollTop;
+            const textBeforeCursor = text.substring(0, cursorPos);
+            mirror.textContent = textBeforeCursor;
+
+            const marker = document.createElement('span');
+            marker.innerHTML = '&nbsp;'; // Use a non-breaking space to ensure it has dimensions
+            mirror.appendChild(marker);
+
+            const lineHeight = parseFloat(getComputedStyle(inputArea).lineHeight);
+            let left = marker.offsetLeft;
+            let top = marker.offsetTop - inputArea.scrollTop + lineHeight;
+
+            mirror.textContent = ''; // Clean up
+
             const inputRect = inputArea.getBoundingClientRect();
-            autocompletePopup.style.left = `${rect.left - inputRect.left}px`;
-            autocompletePopup.style.top = `${rect.bottom - inputRect.top + 5}px`;
+            autocompletePopup.style.left = `${left}px`;
+            autocompletePopup.style.top = `${top}px`;
+            if (top + autocompletePopup.offsetHeight > inputRect.height) {
+                 autocompletePopup.style.top = `${top - lineHeight - autocompletePopup.offsetHeight}px`;
+            }
+
             autocompletePopup.classList.remove('hidden');
         }
 
         function closeAutocomplete() { autocompleteState.active = false; autocompletePopup.classList.add('hidden'); }
-        
-        function handleAutocomplete() {
-            const selection = window.getSelection();
-            if (!selection.rangeCount) return closeAutocomplete();
-            const range = selection.getRangeAt(0);
-            const textBeforeCursor = range.startContainer.textContent.substring(0, range.startOffset);
-            if (/\W$/.test(textBeforeCursor) || textBeforeCursor.length === 0) return closeAutocomplete();
-            const wordMatch = textBeforeCursor.match(/(\w+)$/);
-            if (!wordMatch) return closeAutocomplete();
-            
-            const currentWord = wordMatch[1];
-            const lowerCurrentWord = currentWord.toLowerCase();
-            autocompleteState.wordStartIndex = textBeforeCursor.length - currentWord.length;
-            const suggestions = getAutocompleteKeywords(inputArea.textContent).filter(kw => 
-                kw.startsWith(lowerCurrentWord) && kw !== lowerCurrentWord
-            );
-
-            if (suggestions.length > 0) {
-                autocompleteState.active = true;
-                autocompleteState.suggestions = suggestions;
-                autocompleteState.selectedIndex = 0;
-            } else { closeAutocomplete(); }
-            updateAutocompletePopup();
-        }
-
-        function acceptSuggestion(suggestion) {
-            const selection = window.getSelection();
-            const range = selection.getRangeAt(0);
-            const node = range.startContainer;
-            const textBefore = node.textContent.substring(0, autocompleteState.wordStartIndex);
-            const textAfter = node.textContent.substring(range.startOffset);
-            node.textContent = `${textBefore}${suggestion} ${textAfter}`;
-            range.setStart(node, (textBefore + suggestion + ' ').length);
-            range.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(range);
-            closeAutocomplete();
-            inputArea.dispatchEvent(new Event('input', { bubbles: true }));
-        }
+        function handleAutocomplete() { const text = inputArea.value; const cursorPos = inputArea.selectionStart; const textBeforeCursor = text.substring(0, cursorPos); if (/\s$/.test(textBeforeCursor) || textBeforeCursor.length === 0) return closeAutocomplete(); const wordMatch = textBeforeCursor.match(/(\w+)$/); if (!wordMatch) return closeAutocomplete(); autocompleteState.currentWord = wordMatch[1]; const lowerCurrentWord = autocompleteState.currentWord.toLowerCase(); autocompleteState.wordStartIndex = cursorPos - autocompleteState.currentWord.length; const suggestions = getAutocompleteKeywords(text).filter(kw => kw.toLowerCase().startsWith(lowerCurrentWord) && kw.toLowerCase() !== lowerCurrentWord); if (suggestions.length > 0) { autocompleteState.active = true; autocompleteState.suggestions = suggestions; autocompleteState.selectedIndex = 0; } else { closeAutocomplete(); } updateAutocompletePopup(); }
+        function acceptSuggestion(suggestion) { const { value, selectionStart } = inputArea; const { wordStartIndex, currentWord } = autocompleteState; const textBefore = value.substring(0, wordStartIndex); const textAfter = value.substring(selectionStart); const newText = `${textBefore}${suggestion} ${textAfter}`; inputArea.value = newText; const newCursorPos = wordStartIndex + suggestion.length + 1; inputArea.selectionStart = newCursorPos; inputArea.selectionEnd = newCursorPos; closeAutocomplete(); inputArea.focus(); inputArea.dispatchEvent(new Event('input', { bubbles: true })); }
         
         // --- Event Listeners ---
-        inputArea.addEventListener('keydown', (event) => {
-            if (autocompleteState.active) {
-                if (['ArrowDown', 'ArrowUp', 'Escape', 'Enter', 'Tab'].includes(event.key)) {
-                    event.preventDefault();
-                    if (event.key === 'ArrowDown') {
-                        autocompleteState.selectedIndex = (autocompleteState.selectedIndex + 1) % autocompleteState.suggestions.length;
-                        updateAutocompletePopup();
-                    } else if (event.key === 'ArrowUp') {
-                        autocompleteState.selectedIndex = (autocompleteState.selectedIndex - 1 + autocompleteState.suggestions.length) % autocompleteState.suggestions.length;
-                        updateAutocompletePopup();
-                    } else if (event.key === 'Escape') {
-                        closeAutocomplete();
-                    } else if (event.key === 'Enter' || event.key === 'Tab') {
-                        acceptSuggestion(autocompleteState.suggestions[autocompleteState.selectedIndex]);
-                    }
-                    return;
-                }
-            }
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                document.execCommand('insertLineBreak');
-                inputArea.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-        });
-
-        inputArea.addEventListener('input', () => {
-            processInput();
-            handleAutocomplete();
-        });
-        
-        roundingToggle.addEventListener('change', processInput);
-        
+        inputArea.addEventListener('input', () => { processAndHighlight(); handleAutocomplete(); });
+        inputArea.addEventListener('scroll', () => { highlightingArea.scrollTop = inputArea.scrollTop; highlightingArea.scrollLeft = inputArea.scrollLeft; });
+        roundingToggle.addEventListener('change', processAndHighlight);
+        inputArea.addEventListener('keydown', (event) => { if (autocompleteState.active) { if (['ArrowDown', 'ArrowUp', 'Escape', 'Enter', 'Tab'].includes(event.key)) { event.preventDefault(); if (event.key === 'ArrowDown') { autocompleteState.selectedIndex = (autocompleteState.selectedIndex + 1) % autocompleteState.suggestions.length; updateAutocompletePopup(); } else if (event.key === 'ArrowUp') { autocompleteState.selectedIndex = (autocompleteState.selectedIndex - 1 + autocompleteState.suggestions.length) % autocompleteState.suggestions.length; updateAutocompletePopup(); } else if (event.key === 'Escape') { closeAutocomplete(); } else if (event.key === 'Enter' || event.key === 'Tab') { acceptSuggestion(autocompleteState.suggestions[autocompleteState.selectedIndex]); } return; } } });
         document.addEventListener('click', (e) => !autocompletePopup.contains(e.target) && closeAutocomplete());
-        autocompletePopup.addEventListener('click', (e) => e.target.closest('.autocomplete-item') && acceptSuggestion(autocompleteState.suggestions[parseInt(e.target.dataset.index)]));
-        
-        eraseButton.addEventListener('click', () => {
-            inputArea.textContent = '';
-            processInput();
-            setDefaultCalculationName();
-            showMessage('Calculator cleared!');
-        });
-        
-        outputArea.addEventListener('click', (e) => {
-            const header = e.target.closest('.loop-header');
-            if (header) {
-                const targetId = header.dataset.targetId;
-                const body = $(`#${targetId}`);
-                const icon = header.querySelector('.toggle-icon');
-                if (body) {
-                    body.classList.toggle('hidden');
-                    icon.classList.toggle('expanded');
-                    icon.innerHTML = icon.classList.contains('expanded') ? '▼' : '►';
-                }
-            }
-        });
+        autocompletePopup.addEventListener('click', (e) => { const item = e.target.closest('.autocomplete-item'); if(item) acceptSuggestion(autocompleteState.suggestions[parseInt(item.dataset.index)]); });
+        eraseButton.addEventListener('click', () => { inputArea.value = ''; processAndHighlight(); setDefaultCalculationName(); showMessage('Calculator cleared!'); });
+        outputArea.addEventListener('click', (e) => { const header = e.target.closest('.loop-header'); if (header) { const targetId = header.dataset.targetId; const body = $(`#${targetId}`); const icon = header.querySelector('.toggle-icon'); if (body) { body.classList.toggle('hidden'); icon.classList.toggle('expanded'); icon.innerHTML = icon.classList.contains('expanded') ? '▼' : '►'; } } });
 
-        // Quick Save/Load Logic
-        for (let i = 1; i <= 3; i++) {
-            $(`#save-${i}`).addEventListener('click', () => {
-                const key = `instacalc_slot_${i}`;
-                const dataToSave = {
-                    name: calculationNameInput.value,
-                    content: inputArea.textContent
-                };
-                const saveData = JSON.stringify(dataToSave);
+        // --- Save/Load and other features ---
+        for (let i = 1; i <= 3; i++) { $(`#save-${i}`).addEventListener('click', () => { const key = `instacalc_slot_${i}`; const data = { name: calculationNameInput.value, content: inputArea.value }; if (localStorage.getItem(key)) { confirmModal.classList.add('flex'); confirmModal.classList.remove('hidden'); $('#confirm-ok').onclick = () => { localStorage.setItem(key, JSON.stringify(data)); confirmModal.classList.add('hidden'); showMessage(`Saved to slot ${i}!`); }; $('#confirm-cancel').onclick = () => confirmModal.classList.add('hidden'); } else { localStorage.setItem(key, JSON.stringify(data)); showMessage(`Saved to slot ${i}!`); } }); $(`#load-${i}`).addEventListener('click', () => { const saved = localStorage.getItem(`instacalc_slot_${i}`); if (saved) { try { const data = JSON.parse(saved); calculationNameInput.value = data.name || 'Insta-Clone'; inputArea.value = data.content || ''; } catch (e) { inputArea.value = saved; setDefaultCalculationName(); } processAndHighlight(); showMessage(`Loaded from slot ${i}!`); } else { showMessage(`Slot ${i} is empty.`); } }); }
+        saveToFileButton.addEventListener('click', () => { const data = { name: calculationNameInput.value, content: inputArea.value }; if (!data.content.trim()) { showMessage('Nothing to save!'); return; } const sanitized = (calculationNameInput.value.trim() || 'Calculation').replace(/[\/\\?%*:|"<>]/g, '').replace(/\s+/g, '_'); const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `IC_${sanitized}.txt`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href); showMessage('File download started!'); });
+        loadFromFileButton.addEventListener('click', () => { fileLoaderInput.click(); });
+        fileLoaderInput.addEventListener('change', (event) => { if (!event.target.files.length) return; const file = event.target.files[0]; const reader = new FileReader(); reader.onload = (e) => { const content = e.target.result; try { const data = JSON.parse(content); if (data?.content !== undefined) { calculationNameInput.value = data.name || 'Insta-Clone'; inputArea.value = data.content; } else { throw new Error("Not our format"); } } catch (err) { inputArea.value = content; calculationNameInput.value = file.name.replace(/\.[^/.]+$/, ""); } processAndHighlight(); showMessage(`File "${file.name}" loaded!`); }; reader.onerror = () => showMessage(`Error reading file.`); reader.readAsText(file); event.target.value = null; });
+        shareButton.addEventListener('click', () => { const data = { name: calculationNameInput.value, content: inputArea.value }; if (!data.content.trim()) { showMessage('Nothing to share!'); return; } try { const compressed = pako.deflate(JSON.stringify(data)); let bin = ''; for (let i = 0; i < compressed.length; i++) bin += String.fromCharCode(compressed[i]); const url = `${location.origin}${location.pathname}?data=${encodeURIComponent(btoa(bin))}`; navigator.clipboard.writeText(url).then(() => showMessage('Share link copied!'), () => showMessage('Failed to copy.')); } catch (e) { showMessage('Could not create share link.'); } });
+        noSleepToggle.addEventListener('change', async (e) => { if (e.target.checked) { if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { if(e.target.checked) { e.target.checked = false; showMessage('Wake lock released.'); }}); showMessage('Screen wake lock active.'); } catch (err) { showMessage(`Error: ${err.message}`); e.target.checked = false; } } else { showMessage('Wake Lock API not supported.'); e.target.checked = false; } } else if (wakeLock) { wakeLock.release(); wakeLock = null; } });
+        helpButton.addEventListener('click', () => { helpModal.classList.remove('hidden'); helpModal.classList.add('flex'); });
+        helpCloseButton.addEventListener('click', () => { helpModal.classList.add('hidden'); helpModal.classList.remove('flex'); });
 
-                if (localStorage.getItem(key)) {
-                    confirmModal.classList.add('flex'); confirmModal.classList.remove('hidden');
-                    $('#confirm-ok').onclick = () => { localStorage.setItem(key, saveData); confirmModal.classList.add('hidden'); showMessage(`Saved to slot ${i}!`); };
-                    $('#confirm-cancel').onclick = () => confirmModal.classList.add('hidden');
-                } else {
-                    localStorage.setItem(key, saveData);
-                    showMessage(`Saved to slot ${i}!`);
-                }
-            });
-            $(`#load-${i}`).addEventListener('click', () => {
-                const savedValue = localStorage.getItem(`instacalc_slot_${i}`);
-                if (savedValue) {
-                    try {
-                        const data = JSON.parse(savedValue);
-                        calculationNameInput.value = data.name || 'Insta-Clone';
-                        inputArea.textContent = data.content || '';
-                    } catch (e) {
-                        // Handle old plain-text format for backward compatibility
-                        inputArea.textContent = savedValue;
-                        setDefaultCalculationName();
-                    }
-                    processInput();
-                    showMessage(`Loaded from slot ${i}!`);
-                } else {
-                    showMessage(`Slot ${i} is empty.`);
-                }
-            });
-        }
-        
-        // File Save Logic
-        saveToFileButton.addEventListener('click', () => {
-            const dataToSave = {
-                name: calculationNameInput.value,
-                content: inputArea.textContent
-            };
-            const textToSave = JSON.stringify(dataToSave, null, 2); // Pretty-print JSON
+        // --- Line Highlighting Logic ---
+        const clearHighlights = () => { document.querySelectorAll('.line-highlight').forEach(el => el.classList.remove('line-highlight')); };
+        outputArea.addEventListener('mouseover', (e) => { const targetLine = e.target.closest('.output-line'); if (targetLine) { clearHighlights(); const lineId = targetLine.dataset.lineId; if (lineId) { const inputLine = $(`#highlightingArea [data-line-id="${lineId}"]`); if (inputLine) { inputLine.classList.add('line-highlight'); targetLine.classList.add('line-highlight'); } } } });
+        outputArea.addEventListener('mouseout', () => { clearHighlights(); });
 
-            if (!dataToSave.content.trim()) {
-                showMessage('Nothing to save!');
-                return;
-            }
-            
-            let baseName = calculationNameInput.value.trim() || 'Calculation';
-            const sanitizedBaseName = baseName.replace(/[\/\\?%*:|"<>]/g, '').replace(/\s+/g, '_');
-            
-            const blob = new Blob([textToSave], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `IC_${sanitizedBaseName}.txt`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showMessage('File download started!');
-        });
-
-        loadFromFileButton.addEventListener('click', () => {
-            fileLoaderInput.click();
-        });
-
-        // File Load Logic
-        fileLoaderInput.addEventListener('change', (event) => {
-            if (!event.target.files || event.target.files.length === 0) return;
-            const file = event.target.files[0];
-            const reader = new FileReader();
-            
-            reader.onload = (e) => {
-                const fileContent = e.target.result;
-                try {
-                    const data = JSON.parse(fileContent);
-                    // Check if it's our specific JSON format
-                    if (data && typeof data === 'object' && data.hasOwnProperty('content')) {
-                        calculationNameInput.value = data.name || 'Insta-Clone';
-                        inputArea.textContent = data.content || '';
-                    } else {
-                        // It's some other valid JSON, treat as text
-                        throw new Error("Not our format"); 
-                    }
-                } catch (err) {
-                    // It's not JSON, must be old plain-text format
-                    inputArea.textContent = fileContent;
-                    const fileName = file.name.replace(/\.[^/.]+$/, ""); // remove extension
-                    calculationNameInput.value = fileName;
-                }
-                processInput();
-                showMessage(`File "${file.name}" loaded!`);
-            };
-
-            reader.onerror = () => showMessage(`Error reading file: ${reader.error}`);
-            reader.readAsText(file);
-            event.target.value = null;
-        });
-
-        // ADDED: Share button logic
-        shareButton.addEventListener('click', () => {
-            const dataToShare = { name: calculationNameInput.value, content: inputArea.textContent };
-            if (!dataToShare.content.trim()) {
-                showMessage('Nothing to share!');
-                return;
-            }
-            try {
-                const jsonString = JSON.stringify(dataToShare);
-                const compressed = pako.deflate(jsonString);
-                
-                // Helper to convert Uint8Array to a binary string for btoa
-                let binaryString = '';
-                for (let i = 0; i < compressed.length; i++) {
-                    binaryString += String.fromCharCode(compressed[i]);
-                }
-                const base64 = btoa(binaryString);
-                
-                const urlSafeBase64 = encodeURIComponent(base64);
-                const shareUrl = `${window.location.origin}${window.location.pathname}?data=${urlSafeBase64}`;
-
-                navigator.clipboard.writeText(shareUrl).then(
-                    () => showMessage('Share link copied to clipboard!'),
-                    () => showMessage('Failed to copy link.')
-                );
-            } catch (e) {
-                showMessage('Could not create share link.');
-                console.error("Sharing failed:", e);
-            }
-        });
-
-
-        noSleepToggle.addEventListener('change', async (e) => {
-            if (e.target.checked) {
-                if ('wakeLock' in navigator) {
-                    try {
-                        wakeLock = await navigator.wakeLock.request('screen');
-                        wakeLock.addEventListener('release', () => { if(e.target.checked) { e.target.checked = false; showMessage('Wake lock released.'); }});
-                        showMessage('Screen wake lock active.');
-                    } catch (err) { showMessage(`Error: ${err.message}`); e.target.checked = false; }
-                } else { showMessage('Wake Lock API not supported.'); e.target.checked = false; }
-            } else if (wakeLock) { wakeLock.release(); wakeLock = null; }
-        });
-        
-        helpButton.addEventListener('click', () => {
-            helpModal.classList.remove('hidden');
-            helpModal.classList.add('flex');
-        });
-        helpCloseButton.addEventListener('click', () => {
-            helpModal.classList.add('hidden');
-            helpModal.classList.remove('flex');
-        });
-
-        // MODIFIED: Page load logic to handle shared links
+        // --- Initial Page Load ---
         window.addEventListener('DOMContentLoaded', () => {
-            helpContent.innerHTML = HELP_CONTENT_POPUP_HTML;
-            document.execCommand("defaultParagraphSeparator", false, "br");
-
+            helpContent.innerHTML = HELP_CONTENT_POPUP_HTML.replace(/\\n/g, '\n');
             const urlParams = new URLSearchParams(window.location.search);
             const sharedData = urlParams.get('data');
             let loadedFromUrl = false;
-
             if (sharedData) {
                 try {
-                    const base64 = decodeURIComponent(sharedData);
-                    const binaryString = atob(base64);
-
-                    // Convert binary string back to Uint8Array for pako
+                    let binaryString = atob(decodeURIComponent(sharedData));
                     const uint8array = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) {
-                        uint8array[i] = binaryString.charCodeAt(i);
-                    }
-
-                    const jsonString = pako.inflate(uint8array, { to: 'string' });
-                    const data = JSON.parse(jsonString);
-
-                    if (data && typeof data === 'object' && data.hasOwnProperty('content')) {
+                    for (let i = 0; i < binaryString.length; i++) uint8array[i] = binaryString.charCodeAt(i);
+                    const data = JSON.parse(pako.inflate(uint8array, { to: 'string' }));
+                    if (data?.content !== undefined) {
                         calculationNameInput.value = data.name || 'Insta-Clone';
-                        inputArea.textContent = data.content || '';
+                        inputArea.value = data.content;
                         loadedFromUrl = true;
                         showMessage('Loaded shared calculation!');
-                        // Clear the URL parameter to avoid re-loading on refresh
                         window.history.replaceState({}, document.title, window.location.pathname);
                     }
-                } catch (e) {
-                    console.error('Failed to load shared data:', e);
-                    showMessage('Could not load data from link.');
-                }
+                } catch (e) { showMessage('Could not load data from link.'); }
             }
-            
             if (!loadedFromUrl) {
-                // Load default content if not loading from a share link
-                inputArea.textContent = HELP_CONTENT_INPUT;
+                inputArea.value = HELP_CONTENT_INPUT;
                 setDefaultCalculationName(); 
             }
-            
-            processInput();
+            processAndHighlight();
         });
-
     </script>
 </body>
 </html>

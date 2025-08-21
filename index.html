@@ -31,53 +31,43 @@
             background-color: #6b7280;
         }
 
-        /* MODIFIED: Styles for the dual-layer input area */
-        .input-container {
-            position: relative;
-            flex: 1;
-            min-height: 0;
-            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-            font-size: 1rem; /* text-base */
-            line-height: 1.5;
-        }
-        @media (min-width: 768px) {
-            .input-container { font-size: 1.125rem; } /* md:text-lg */
-        }
-
-        #highlightingArea, #inputArea {
-            padding: 1rem;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-y: auto;
-            position: absolute;
-            top: 0; right: 0; bottom: 0; left: 0;
-            border-radius: 0.75rem; /* rounded-xl */
-        }
-        
-        #highlightingArea {
-            background-color: #111827; /* gray-900 */
-            z-index: 1;
-            pointer-events: none; /* Clicks go through to the input area */
-            color: #d1d5db; /* Default text color */
-        }
-
+        /* Styles for the contenteditable div (our new input area) */
         #inputArea {
-            -webkit-box-shadow: none; -moz-box-shadow: none; box-shadow: none;
-            outline: none; resize: none;
-            z-index: 2;
-            background-color: transparent;
-            color: transparent; /* Make the actual text invisible */
-            caret-color: #fff; /* But keep the cursor visible */
+            -webkit-box-shadow: none;
+            -moz-box-shadow: none;
+            box-shadow: none;
+            outline: none;
+            resize: none;
+            line-height: 1.5;
+            padding: 1rem;
+            color: #d1d5db; /* Light gray text */
+            background-color: #111827; /* Dark background */
+            white-space: pre-wrap; /* Preserve whitespace and line breaks */
+            caret-color: #fff; /* White cursor */
+            overflow-y: auto; /* Enable scrolling */
         }
-
         /* Style for the syntax-highlighted spans */
-        .variable-new { color: #60a5fa; /* Blue */ }
-        .variable-redefined { color: #f87171; /* Red */ }
-        .variable-used { color: #fb923c; /* Orange-400 */ }
-        .comment { color: #facc15; /* Yellow */ }
-        .operator { color: #a1a1aa; /* Gray-400 for operators like = */ }
-        .keyword { color: #c084fc; /* Purple-400 for keywords like 'today' and 'to' */ }
-        .unit { color: #2dd4bf; /* Teal-400 for units like 'usd', 'm', 'days' */ }
+        #inputArea .variable-new, .output-highlight .variable-new {
+            color: #60a5fa; /* Blue */
+        }
+        #inputArea .variable-redefined, .output-highlight .variable-redefined {
+            color: #f87171; /* Red */
+        }
+        #inputArea .variable-used, .output-highlight .variable-used {
+            color: #fb923c; /* Orange-400 */
+        }
+        #inputArea .comment, .output-highlight .comment {
+            color: #facc15; /* Yellow */
+        }
+        #inputArea .operator, .output-highlight .operator {
+            color: #a1a1aa; /* Gray-400 for operators like = */
+        }
+        #inputArea .keyword, .output-highlight .keyword {
+            color: #c084fc; /* Purple-400 for keywords like 'today' and 'to' */
+        }
+        #inputArea .unit, .output-highlight .unit {
+            color: #2dd4bf; /* Teal-400 for units like 'usd', 'm', 'days' */
+        }
         
         /* Styles for Autocomplete Popup */
         #autocomplete-popup {
@@ -152,12 +142,6 @@
             color: #a5b4fc; /* indigo-300 */
             font-weight: 500;
         }
-
-        /* Style for line highlighting on hover */
-        .line-highlight {
-            background-color: rgba(75, 85, 99, 0.5); /* gray-600 with 50% opacity */
-            transition: background-color 0.1s ease-in-out;
-        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
@@ -170,10 +154,8 @@
                 <button id="eraseButton" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg shadow-lg hover:bg-red-700 flex-shrink-0">Erase</button>
             </div>
             
-            <!-- MODIFIED: Container for the dual-layer input -->
-            <div class="input-container">
-                <div id="highlightingArea" aria-hidden="true"></div>
-                <div id="inputArea" contenteditable="true" spellcheck="false"></div>
+            <div class="relative flex-1 min-h-0">
+                <div id="inputArea" contenteditable="true" class="w-full h-full rounded-xl bg-gray-900 text-gray-200 font-mono text-base md:text-lg"></div>
                 <div id="autocomplete-popup" class="hidden"></div>
             </div>
         </div>
@@ -220,6 +202,7 @@
         <div class="mt-4 flex flex-wrap justify-center gap-2">
             <button id="saveToFileButton" class="bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 flex-grow sm:flex-grow-0">Save to File</button>
             <button id="loadFromFileButton" class="bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 flex-grow sm:flex-grow-0">Load from File</button>
+            <!-- MODIFIED: Added Share button -->
             <button id="shareButton" class="bg-teal-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-teal-700 flex-grow sm:flex-grow-0">Share</button>
             <button id="helpButton" class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg shadow-md hover:bg-purple-700 flex-grow sm:flex-grow-0">Show Help</button>
         </div>
@@ -256,7 +239,6 @@
         const $ = (selector) => document.querySelector(selector);
         
         const inputArea = $('#inputArea');
-        const highlightingArea = $('#highlightingArea'); // ADDED: The background highlighting div
         const outputArea = $('#outputArea');
         const eraseButton = $('#eraseButton');
         const calculationNameInput = $('#calculationNameInput');
@@ -272,7 +254,7 @@
         const saveToFileButton = $('#saveToFileButton');
         const loadFromFileButton = $('#loadFromFileButton');
         const fileLoaderInput = $('#fileLoader');
-        const shareButton = $('#shareButton');
+        const shareButton = $('#shareButton'); // ADDED
 
         let variables = {};
         let wakeLock = null;
@@ -331,7 +313,6 @@ endfor</code>
             
             <h5>Interface & Tips</h5>
             <p><strong>Autocomplete:</strong> Start typing a variable or keyword and a suggestion box will appear. Press <strong>Tab</strong> or <strong>Enter</strong> to accept.</p>
-            <p><strong>Line Highlighting:</strong> Hover your mouse over a line in the Results panel to see the corresponding input line highlighted.</p>
             <p><strong>Collapsible Results:</strong> In the Results panel, click the '►' icon on a loop header to expand or collapse its output.</p>
             <p><strong>Rounding Toggle:</strong> Enable this to format all decimal results to two decimal places.</p>
             <p><strong>No Sleep Toggle:</strong> Enable this to prevent your device's screen from turning off.</p>
@@ -339,15 +320,24 @@ endfor</code>
 
         const inchRates = { cm: 2.54, m: 0.0254, ft: 1/12 };
         const conversionRates = {
+            // Currency
             usd: { eur: 0.92, gbp: 0.78 }, eur: { usd: 1.09, gbp: 0.85 }, gbp: { usd: 1.28, eur: 1.17 },
-            m: { ft: 3.28084, cm: 100, in: 39.3701, inch: 39.3701 }, ft: { m: 0.3048, cm: 30.48, in: 12, inch: 12 }, cm: { m: 0.01, ft: 0.0328084, in: 0.393701, inch: 0.393701 }, in: inchRates, inch: inchRates,
+            // Length
+            m: { ft: 3.28084, cm: 100, in: 39.3701, inch: 39.3701 },
+            ft: { m: 0.3048, cm: 30.48, in: 12, inch: 12 },
+            cm: { m: 0.01, ft: 0.0328084, in: 0.393701, inch: 0.393701 },
+            in: inchRates,
+            inch: inchRates,
+            // Weight
             kg: { lb: 2.20462 }, lb: { kg: 0.453592 },
         };
 
         const specialWords = {
             'today': 'keyword', 'to': 'keyword', 'for': 'keyword', 'endfor': 'keyword', 'of': 'keyword',
-            'usd': 'unit', 'eur': 'unit', 'gbp': 'unit', 'm': 'unit', 'ft': 'unit', 'cm': 'unit', 'kg': 'unit', 'lb': 'unit', 'in': 'unit', 'inch': 'unit',
-            'days': 'unit', 'day': 'unit', 'weeks': 'unit', 'week': 'unit', 'months': 'unit', 'month': 'unit', 'years': 'unit', 'year': 'unit', 'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
+            'usd': 'unit', 'eur': 'unit', 'gbp': 'unit',
+            'm': 'unit', 'ft': 'unit', 'cm': 'unit', 'kg': 'unit', 'lb': 'unit', 'in': 'unit', 'inch': 'unit',
+            'days': 'unit', 'day': 'unit', 'weeks': 'unit', 'week': 'unit', 'months': 'unit', 'month': 'unit',
+            'years': 'unit', 'year': 'unit', 'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
         };
 
         const setDefaultCalculationName = () => {
@@ -385,6 +375,7 @@ endfor</code>
 
         const calculate = (expression) => {
             if (!expression) return undefined;
+            // Handle "15% of 300"
             const percentageOfMatch = expression.match(/(\d+(?:\.\d+)?)%\s*of\s*(\d+(?:\.\d+)?)/i);
             if (percentageOfMatch) {
                 const [, perc, num] = percentageOfMatch;
@@ -474,11 +465,9 @@ endfor</code>
         };
 
         const processInput = () => {
-            const text = inputArea.textContent; // Read plain text from the (now invisible) input area
-            highlightInput(text);
-            
+            highlightInput();
             variables = {};
-            const lines = text.split('\n');
+            const lines = inputArea.textContent.split('\n');
             let outputHTML = '';
             let loopIdCounter = 0;
 
@@ -502,12 +491,12 @@ endfor</code>
                     }
 
                     if (endforIndex === -1) {
-                        outputHTML += `<div class="text-red-400 output-line" data-line-id="${i}">Error: Missing 'endfor'.</div>`;
+                        outputHTML += `<div class="text-red-400">Error: Missing 'endfor'.</div>`;
                         continue;
                     }
                     
                     const highlightedHeader = highlightText(line, new Set(Object.keys(variables)));
-                    outputHTML += `<div class="loop-header output-line" data-line-id="${i}" data-target-id="${loopBodyId}"><span class="toggle-icon">►</span><div class="flex items-start output-highlight flex-1"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedHeader}</span></div></div>`;
+                    outputHTML += `<div class="loop-header" data-target-id="${loopBodyId}"><span class="toggle-icon">►</span><div class="flex items-start output-highlight flex-1"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedHeader}</span></div></div>`;
 
                     let loopBodyHTML = '';
                     const loopBodyLines = lines.slice(i + 1, endforIndex);
@@ -534,42 +523,68 @@ endfor</code>
                         delete variables[iteratorLower];
                     }
                     
-                    loopBodyHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${endforIndex}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightText(lines[endforIndex], new Set(Object.keys(variables)))}</span></div>`;
+                    loopBodyHTML += `<div class="flex items-start output-highlight"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightText(lines[endforIndex], new Set(Object.keys(variables)))}</span></div>`;
                     outputHTML += `<div id="${loopBodyId}" class="loop-body hidden">${loopBodyHTML}</div>`;
                     i = endforIndex;
 
                 } else if (trimmedLine.toLowerCase() === 'endfor') {
-                    outputHTML += `<div class="text-red-400 output-line" data-line-id="${i}">Error: Unexpected 'endfor'.</div>`;
+                    outputHTML += `<div class="text-red-400">Error: Unexpected 'endfor'.</div>`;
                 } else {
                     if (!trimmedLine) {
-                        outputHTML += `<div class="h-6 output-line" data-line-id="${i}"></div>`;
+                        outputHTML += `<div class="h-6"></div>`;
                     } else {
                         const lineVars = new Set(Object.keys(variables));
                         const result = evaluateLine(line);
                         const highlightedLine = highlightText(line, lineVars);
                         if (result !== null && result !== undefined) {
-                            outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1">${highlightedLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`;
+                            outputHTML += `<div class="flex items-start output-highlight"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1">${highlightedLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`;
                         } else {
-                            outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedLine}</span></div>`;
+                            outputHTML += `<div class="flex items-start output-highlight"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedLine}</span></div>`;
                         }
                     }
                 }
             }
             outputArea.innerHTML = outputHTML || '<div class="text-gray-400">Your results will appear here in real-time.</div>';
         };
-        
-        // MODIFIED: This function now only populates the background layer
-        const highlightInput = (text) => {
+
+        const highlightInput = () => {
+            const selection = window.getSelection();
+            const savedOffset = (selection.rangeCount > 0) ? (() => {
+                const range = selection.getRangeAt(0).cloneRange();
+                range.selectNodeContents(inputArea);
+                range.setEnd(selection.getRangeAt(0).startContainer, selection.getRangeAt(0).startOffset);
+                return range.toString().length;
+            })() : 0;
+
             const definedVariables = new Set();
-            const lines = text.split('\n');
-            const highlightedLines = lines.map((line, index) => {
+            const lines = inputArea.textContent.split('\n');
+            const highlightedLines = lines.map(line => {
                 const highlighted = highlightText(line, definedVariables);
                 const assignmentMatch = line.trim().match(/^([a-zA-Z_]\w*)\s*=/);
                 if (assignmentMatch) definedVariables.add(assignmentMatch[1].toLowerCase());
-                return `<div data-line-id="${index}">${highlighted || '<br>'}</div>`;
+                return highlighted;
             });
             
-            highlightingArea.innerHTML = highlightedLines.join('');
+            inputArea.innerHTML = highlightedLines.join('\n');
+
+            let charCount = 0;
+            const newRange = document.createRange();
+            const treeWalker = document.createTreeWalker(inputArea, NodeFilter.SHOW_TEXT);
+            let node;
+            while (node = treeWalker.nextNode()) {
+                if (charCount + node.length >= savedOffset) {
+                    newRange.setStart(node, savedOffset - charCount);
+                    newRange.collapse(true);
+                    selection.removeAllRanges();
+                    selection.addRange(newRange);
+                    return;
+                }
+                charCount += node.length;
+            }
+            newRange.selectNodeContents(inputArea);
+            newRange.collapse(false);
+            selection.removeAllRanges();
+            selection.addRange(newRange);
         };
 
         // --- Autocomplete ---
@@ -578,7 +593,7 @@ endfor</code>
             autocompletePopup.innerHTML = autocompleteState.suggestions.map((s, i) => `<div class="autocomplete-item ${i === autocompleteState.selectedIndex ? 'selected' : ''}" data-index="${i}">${s}</div>`).join('');
             const range = window.getSelection().getRangeAt(0);
             const rect = range.getBoundingClientRect();
-            const inputRect = inputArea.parentElement.getBoundingClientRect(); // Use parent container
+            const inputRect = inputArea.getBoundingClientRect();
             autocompletePopup.style.left = `${rect.left - inputRect.left}px`;
             autocompletePopup.style.top = `${rect.bottom - inputRect.top + 5}px`;
             autocompletePopup.classList.remove('hidden');
@@ -644,18 +659,16 @@ endfor</code>
                     return;
                 }
             }
-            // The default browser behavior for 'Enter' is now correct, so no need to hijack it.
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                document.execCommand('insertLineBreak');
+                inputArea.dispatchEvent(new Event('input', { bubbles: true }));
+            }
         });
 
         inputArea.addEventListener('input', () => {
             processInput();
             handleAutocomplete();
-        });
-
-        // ADDED: Sync scrolling between the two layers
-        inputArea.addEventListener('scroll', () => {
-            highlightingArea.scrollTop = inputArea.scrollTop;
-            highlightingArea.scrollLeft = inputArea.scrollLeft;
         });
         
         roundingToggle.addEventListener('change', processInput);
@@ -688,14 +701,20 @@ endfor</code>
         for (let i = 1; i <= 3; i++) {
             $(`#save-${i}`).addEventListener('click', () => {
                 const key = `instacalc_slot_${i}`;
-                const dataToSave = { name: calculationNameInput.value, content: inputArea.textContent };
+                const dataToSave = {
+                    name: calculationNameInput.value,
+                    content: inputArea.textContent
+                };
                 const saveData = JSON.stringify(dataToSave);
 
                 if (localStorage.getItem(key)) {
                     confirmModal.classList.add('flex'); confirmModal.classList.remove('hidden');
                     $('#confirm-ok').onclick = () => { localStorage.setItem(key, saveData); confirmModal.classList.add('hidden'); showMessage(`Saved to slot ${i}!`); };
                     $('#confirm-cancel').onclick = () => confirmModal.classList.add('hidden');
-                } else { localStorage.setItem(key, saveData); showMessage(`Saved to slot ${i}!`); }
+                } else {
+                    localStorage.setItem(key, saveData);
+                    showMessage(`Saved to slot ${i}!`);
+                }
             });
             $(`#load-${i}`).addEventListener('click', () => {
                 const savedValue = localStorage.getItem(`instacalc_slot_${i}`);
@@ -705,19 +724,30 @@ endfor</code>
                         calculationNameInput.value = data.name || 'Insta-Clone';
                         inputArea.textContent = data.content || '';
                     } catch (e) {
-                        inputArea.textContent = savedValue; setDefaultCalculationName();
+                        // Handle old plain-text format for backward compatibility
+                        inputArea.textContent = savedValue;
+                        setDefaultCalculationName();
                     }
-                    processInput(); showMessage(`Loaded from slot ${i}!`);
-                } else { showMessage(`Slot ${i} is empty.`); }
+                    processInput();
+                    showMessage(`Loaded from slot ${i}!`);
+                } else {
+                    showMessage(`Slot ${i} is empty.`);
+                }
             });
         }
         
         // File Save Logic
         saveToFileButton.addEventListener('click', () => {
-            const dataToSave = { name: calculationNameInput.value, content: inputArea.textContent };
-            const textToSave = JSON.stringify(dataToSave, null, 2);
+            const dataToSave = {
+                name: calculationNameInput.value,
+                content: inputArea.textContent
+            };
+            const textToSave = JSON.stringify(dataToSave, null, 2); // Pretty-print JSON
 
-            if (!dataToSave.content.trim()) { showMessage('Nothing to save!'); return; }
+            if (!dataToSave.content.trim()) {
+                showMessage('Nothing to save!');
+                return;
+            }
             
             let baseName = calculationNameInput.value.trim() || 'Calculation';
             const sanitizedBaseName = baseName.replace(/[\/\\?%*:|"<>]/g, '').replace(/\s+/g, '_');
@@ -725,12 +755,18 @@ endfor</code>
             const blob = new Blob([textToSave], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
-            a.href = url; a.download = `IC_${sanitizedBaseName}.txt`;
-            document.body.appendChild(a); a.click(); document.body.removeChild(a);
-            URL.revokeObjectURL(url); showMessage('File download started!');
+            a.href = url;
+            a.download = `IC_${sanitizedBaseName}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            showMessage('File download started!');
         });
 
-        loadFromFileButton.addEventListener('click', () => { fileLoaderInput.click(); });
+        loadFromFileButton.addEventListener('click', () => {
+            fileLoaderInput.click();
+        });
 
         // File Load Logic
         fileLoaderInput.addEventListener('change', (event) => {
@@ -742,35 +778,58 @@ endfor</code>
                 const fileContent = e.target.result;
                 try {
                     const data = JSON.parse(fileContent);
+                    // Check if it's our specific JSON format
                     if (data && typeof data === 'object' && data.hasOwnProperty('content')) {
                         calculationNameInput.value = data.name || 'Insta-Clone';
                         inputArea.textContent = data.content || '';
-                    } else { throw new Error("Not our format"); }
+                    } else {
+                        // It's some other valid JSON, treat as text
+                        throw new Error("Not our format"); 
+                    }
                 } catch (err) {
+                    // It's not JSON, must be old plain-text format
                     inputArea.textContent = fileContent;
-                    const fileName = file.name.replace(/\.[^/.]+$/, "");
+                    const fileName = file.name.replace(/\.[^/.]+$/, ""); // remove extension
                     calculationNameInput.value = fileName;
                 }
-                processInput(); showMessage(`File "${file.name}" loaded!`);
+                processInput();
+                showMessage(`File "${file.name}" loaded!`);
             };
+
             reader.onerror = () => showMessage(`Error reading file: ${reader.error}`);
-            reader.readAsText(file); event.target.value = null;
+            reader.readAsText(file);
+            event.target.value = null;
         });
 
-        // Share button logic
+        // ADDED: Share button logic
         shareButton.addEventListener('click', () => {
             const dataToShare = { name: calculationNameInput.value, content: inputArea.textContent };
-            if (!dataToShare.content.trim()) { showMessage('Nothing to share!'); return; }
+            if (!dataToShare.content.trim()) {
+                showMessage('Nothing to share!');
+                return;
+            }
             try {
                 const jsonString = JSON.stringify(dataToShare);
                 const compressed = pako.deflate(jsonString);
+                
+                // Helper to convert Uint8Array to a binary string for btoa
                 let binaryString = '';
-                for (let i = 0; i < compressed.length; i++) { binaryString += String.fromCharCode(compressed[i]); }
+                for (let i = 0; i < compressed.length; i++) {
+                    binaryString += String.fromCharCode(compressed[i]);
+                }
                 const base64 = btoa(binaryString);
+                
                 const urlSafeBase64 = encodeURIComponent(base64);
                 const shareUrl = `${window.location.origin}${window.location.pathname}?data=${urlSafeBase64}`;
-                navigator.clipboard.writeText(shareUrl).then(() => showMessage('Share link copied to clipboard!'), () => showMessage('Failed to copy link.'));
-            } catch (e) { showMessage('Could not create share link.'); console.error("Sharing failed:", e); }
+
+                navigator.clipboard.writeText(shareUrl).then(
+                    () => showMessage('Share link copied to clipboard!'),
+                    () => showMessage('Failed to copy link.')
+                );
+            } catch (e) {
+                showMessage('Could not create share link.');
+                console.error("Sharing failed:", e);
+            }
         });
 
 
@@ -786,30 +845,16 @@ endfor</code>
             } else if (wakeLock) { wakeLock.release(); wakeLock = null; }
         });
         
-        helpButton.addEventListener('click', () => { helpModal.classList.remove('hidden'); helpModal.classList.add('flex'); });
-        helpCloseButton.addEventListener('click', () => { helpModal.classList.add('hidden'); helpModal.classList.remove('flex'); });
-
-        // Line Highlighting Logic
-        const clearHighlights = () => { document.querySelectorAll('.line-highlight').forEach(el => el.classList.remove('line-highlight')); };
-
-        outputArea.addEventListener('mouseover', (e) => {
-            const targetLine = e.target.closest('.output-line');
-            if (targetLine) {
-                clearHighlights();
-                const lineId = targetLine.dataset.lineId;
-                if (lineId) {
-                    // MODIFIED: Target the background highlighting layer now
-                    const inputLine = $(`#highlightingArea [data-line-id="${lineId}"]`);
-                    if (inputLine) {
-                        inputLine.classList.add('line-highlight');
-                        targetLine.classList.add('line-highlight');
-                    }
-                }
-            }
+        helpButton.addEventListener('click', () => {
+            helpModal.classList.remove('hidden');
+            helpModal.classList.add('flex');
+        });
+        helpCloseButton.addEventListener('click', () => {
+            helpModal.classList.add('hidden');
+            helpModal.classList.remove('flex');
         });
 
-        outputArea.addEventListener('mouseout', () => { clearHighlights(); });
-
+        // MODIFIED: Page load logic to handle shared links
         window.addEventListener('DOMContentLoaded', () => {
             helpContent.innerHTML = HELP_CONTENT_POPUP_HTML;
             document.execCommand("defaultParagraphSeparator", false, "br");
@@ -822,16 +867,22 @@ endfor</code>
                 try {
                     const base64 = decodeURIComponent(sharedData);
                     const binaryString = atob(base64);
+
+                    // Convert binary string back to Uint8Array for pako
                     const uint8array = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) { uint8array[i] = binaryString.charCodeAt(i); }
+                    for (let i = 0; i < binaryString.length; i++) {
+                        uint8array[i] = binaryString.charCodeAt(i);
+                    }
+
                     const jsonString = pako.inflate(uint8array, { to: 'string' });
                     const data = JSON.parse(jsonString);
 
                     if (data && typeof data === 'object' && data.hasOwnProperty('content')) {
                         calculationNameInput.value = data.name || 'Insta-Clone';
-                        inputArea.textContent = data.content || ''; // Set plain text to input area
+                        inputArea.textContent = data.content || '';
                         loadedFromUrl = true;
                         showMessage('Loaded shared calculation!');
+                        // Clear the URL parameter to avoid re-loading on refresh
                         window.history.replaceState({}, document.title, window.location.pathname);
                     }
                 } catch (e) {
@@ -841,6 +892,7 @@ endfor</code>
             }
             
             if (!loadedFromUrl) {
+                // Load default content if not loading from a share link
                 inputArea.textContent = HELP_CONTENT_INPUT;
                 setDefaultCalculationName(); 
             }

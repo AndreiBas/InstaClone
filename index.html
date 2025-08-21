@@ -6,7 +6,7 @@
     <title>Insta-Clone Calculator</title>
     <!-- Use the Inter font from Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
     <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -68,7 +68,6 @@
             outline: none;
         }
 
-        /* ADDED: Styles for the invisible mirror div used for cursor positioning */
         #autocomplete-mirror {
             z-index: -1; /* Keep it out of sight and non-interactive */
             visibility: hidden;
@@ -114,9 +113,10 @@
 </head>
 <body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
 
-    <div class="w-full max-w-6xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row flex-shrink-0 md:flex-1 md:min-h-0">
+    <!-- MODIFIED: Added flex-1 to make this panel grow and fill vertical space on mobile -->
+    <div class="w-full max-w-6xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row flex-1 md:flex-1 md:min-h-0">
         <!-- Left Panel: Input Area -->
-        <div class="flex-1 flex flex-col p-4 md:p-8 h-72 md:h-auto">
+        <div class="flex-1 flex flex-col p-4 md:p-8 h-72 md:h-auto min-h-0">
             <div class="flex justify-between items-center mb-2 h-12 gap-2 md:gap-4">
                 <input type="text" id="calculationNameInput" placeholder="Calculation Name..." class="text-xl md:text-2xl font-bold text-white bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-2 py-1 w-full -ml-2">
                 <button id="eraseButton" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg shadow-lg hover:bg-red-700 flex-shrink-0">Erase</button>
@@ -124,14 +124,13 @@
             
             <div class="input-container">
                 <div id="highlightingArea" aria-hidden="true"></div>
-                <!-- ADDED: The mirror div for cursor position calculation -->
                 <div id="autocomplete-mirror" aria-hidden="true"></div>
                 <textarea id="inputArea" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off"></textarea>
                 <div id="autocomplete-popup" class="hidden"></div>
             </div>
         </div>
         <!-- Right Panel: Output Area -->
-        <div class="flex-1 flex flex-col p-4 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30 h-72 md:h-auto">
+        <div class="flex-1 flex flex-col p-4 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30 h-72 md:h-auto min-h-0">
             <div class="flex justify-between items-center mb-2 h-12">
                 <h2 class="text-2xl font-bold text-white">Results</h2>
                 <div class="flex items-center space-x-3">
@@ -157,8 +156,15 @@
         </div>
     </div>
 
-    <!-- Saved Calculations Section -->
-    <div class="w-full max-w-6xl mt-4 p-4 md:p-6 bg-gray-800 rounded-2xl shadow-2xl">
+    <!-- ADDED: Button to toggle the controls on mobile -->
+    <div class="w-full max-w-6xl mt-2 md:hidden">
+        <button id="toggleControlsButton" class="w-full bg-gray-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-gray-600">
+            Manage Saves & Files
+        </button>
+    </div>
+
+    <!-- MODIFIED: This entire section is now collapsible -->
+    <div id="controls-panel" class="w-full max-w-6xl mt-4 p-4 md:p-6 bg-gray-800 rounded-2xl shadow-2xl hidden md:block">
         <h3 class="text-lg font-semibold text-white mb-2">Quick Save Slots</h3>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button id="save-1" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 1</button>
@@ -224,6 +230,9 @@
         const loadFromFileButton = $('#loadFromFileButton');
         const fileLoaderInput = $('#fileLoader');
         const shareButton = $('#shareButton');
+        // ADDED: Selectors for new mobile controls
+        const toggleControlsButton = $('#toggleControlsButton');
+        const controlsPanel = $('#controls-panel');
 
         let variables = {};
         let wakeLock = null;
@@ -260,7 +269,7 @@
         const setDefaultCalculationName = () => { const today = new Date(); const mm = String(today.getMonth() + 1).padStart(2, '0'); const dd = String(today.getDate()).padStart(2, '0'); const yy = today.getFullYear().toString().slice(-2); calculationNameInput.value = `Insta-Clone ${mm}-${dd}-${yy}`; };
         const showMessage = (text) => { $('#message-text').textContent = text; messageBox.classList.remove('hidden'); setTimeout(() => messageBox.classList.remove('opacity-0'), 10); setTimeout(() => { messageBox.classList.add('opacity-0'); setTimeout(() => messageBox.classList.add('hidden'), 3000); }, 3000); };
         
-        // --- Core Calculation Engine (Unchanged) ---
+        // --- Core Calculation Engine ---
         const calculate = (expression) => { if (!expression) return undefined; const pOfMatch = expression.match(/(\d+(?:\.\d+)?)%\s*of\s*(\d+(?:\.\d+)?)/i); if (pOfMatch) { const [, perc, num] = pOfMatch; return (parseFloat(perc) / 100) * parseFloat(num); } const convMatch = expression.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*to\s*([a-zA-Z]+)$/); if (convMatch) { const [, v, from, to] = convMatch.map(s => s.toLowerCase()); if (conversionRates[from]?.[to]) return parseFloat(v) * conversionRates[from][to]; return `Error: Unsupported conversion.`; } expression = expression.replace(/(\d+(?:\.\d+)?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)%/g, (m, b, op, p) => (op === '+' || op === '-') ? `${b} ${op} (${b} * ${parseFloat(p) / 100})` : `${b} ${op} ${parseFloat(p) / 100}`); try { const result = new Function(`return ${expression}`)(); return (typeof result === 'number' && !isNaN(result)) ? result : undefined; } catch { return undefined; } };
         const replaceVariables = (expr) => Object.keys(variables).sort((a, b) => b.length - a.length).reduce((e, key) => e.replace(new RegExp(`\\b${key}\\b`, 'gi'), variables[key]), expr);
         const evaluateLine = (line) => { line = line.trim(); if (!line || line.startsWith('//') || line.startsWith('for') || line === 'endfor') return null; const assignMatch = line.match(/^([a-zA-Z_]\w*)\s*=\s*(.*)$/); if (assignMatch) { const [, varName, expr] = assignMatch; const result = calculate(replaceVariables(expr.trim())); variables[varName.toLowerCase()] = result; return result; } const dateMatch = line.match(/^today\s*([+\-])\s*([a-zA-Z_]\w*|\d+)\s*(days?|weeks?|months?|years?)$/i); if (dateMatch) { const [, op, val, unit] = dateMatch; const num = isNaN(val) ? parseInt(variables[val.toLowerCase()], 10) : parseInt(val, 10); if (isNaN(num)) return `Error: Invalid number.`; const today = new Date(); const mult = op === '+' ? 1 : -1; const u = unit.toLowerCase(); if (u.startsWith('day')) today.setDate(today.getDate() + num * mult); else if (u.startsWith('week')) today.setDate(today.getDate() + num * 7 * mult); else if (u.startsWith('month')) today.setMonth(today.getMonth() + num * mult); else if (u.startsWith('year')) today.setFullYear(today.getFullYear() + num * mult); return today.toDateString(); } return calculate(replaceVariables(line)); };
@@ -308,7 +317,6 @@
         // --- Autocomplete Logic ---
         const getAutocompleteKeywords = (textContent) => { const orderedVars = []; textContent.split('\n').forEach(line => { const match = line.trim().match(/^([a-zA-Z_]\w*)\s*=/); if (match) { const varName = match[1].toLowerCase(); const existingIndex = orderedVars.indexOf(varName); if (existingIndex > -1) orderedVars.splice(existingIndex, 1); orderedVars.push(varName); } }); const newestVarsFirst = orderedVars.reverse(); const specialKeywordsList = Object.keys(specialWords); return [...newestVarsFirst, ...specialKeywordsList.filter(k => !orderedVars.includes(k))]; };
         
-        // REWRITTEN: Autocomplete positioning using the mirror technique
         function updateAutocompletePopup() {
             if (!autocompleteState.active || autocompleteState.suggestions.length === 0) {
                 return autocompletePopup.classList.add('hidden');
@@ -325,20 +333,20 @@
             mirror.textContent = textBeforeCursor;
 
             const marker = document.createElement('span');
-            marker.innerHTML = '&nbsp;'; // Use a non-breaking space to ensure it has dimensions
+            marker.innerHTML = '&nbsp;';
             mirror.appendChild(marker);
 
             const lineHeight = parseFloat(getComputedStyle(inputArea).lineHeight);
             let left = marker.offsetLeft;
             let top = marker.offsetTop - inputArea.scrollTop + lineHeight;
 
-            mirror.textContent = ''; // Clean up
+            mirror.textContent = '';
 
-            const inputRect = inputArea.getBoundingClientRect();
+            const inputContainerRect = inputArea.parentElement.getBoundingClientRect();
             autocompletePopup.style.left = `${left}px`;
             autocompletePopup.style.top = `${top}px`;
-            if (top + autocompletePopup.offsetHeight > inputRect.height) {
-                 autocompletePopup.style.top = `${top - lineHeight - autocompletePopup.offsetHeight}px`;
+            if (top + autocompletePopup.offsetHeight > inputContainerRect.height) {
+                 autocompletePopup.style.top = `${top - lineHeight - autocompletePopup.offsetHeight - 5}px`;
             }
 
             autocompletePopup.classList.remove('hidden');
@@ -346,7 +354,7 @@
 
         function closeAutocomplete() { autocompleteState.active = false; autocompletePopup.classList.add('hidden'); }
         function handleAutocomplete() { const text = inputArea.value; const cursorPos = inputArea.selectionStart; const textBeforeCursor = text.substring(0, cursorPos); if (/\s$/.test(textBeforeCursor) || textBeforeCursor.length === 0) return closeAutocomplete(); const wordMatch = textBeforeCursor.match(/(\w+)$/); if (!wordMatch) return closeAutocomplete(); autocompleteState.currentWord = wordMatch[1]; const lowerCurrentWord = autocompleteState.currentWord.toLowerCase(); autocompleteState.wordStartIndex = cursorPos - autocompleteState.currentWord.length; const suggestions = getAutocompleteKeywords(text).filter(kw => kw.toLowerCase().startsWith(lowerCurrentWord) && kw.toLowerCase() !== lowerCurrentWord); if (suggestions.length > 0) { autocompleteState.active = true; autocompleteState.suggestions = suggestions; autocompleteState.selectedIndex = 0; } else { closeAutocomplete(); } updateAutocompletePopup(); }
-        function acceptSuggestion(suggestion) { const { value, selectionStart } = inputArea; const { wordStartIndex, currentWord } = autocompleteState; const textBefore = value.substring(0, wordStartIndex); const textAfter = value.substring(selectionStart); const newText = `${textBefore}${suggestion} ${textAfter}`; inputArea.value = newText; const newCursorPos = wordStartIndex + suggestion.length + 1; inputArea.selectionStart = newCursorPos; inputArea.selectionEnd = newCursorPos; closeAutocomplete(); inputArea.focus(); inputArea.dispatchEvent(new Event('input', { bubbles: true })); }
+        function acceptSuggestion(suggestion) { const { value, selectionStart } = inputArea; const { wordStartIndex } = autocompleteState; const textBefore = value.substring(0, wordStartIndex); const textAfter = value.substring(selectionStart); const newText = `${textBefore}${suggestion} ${textAfter}`; inputArea.value = newText; const newCursorPos = wordStartIndex + suggestion.length + 1; inputArea.selectionStart = newCursorPos; inputArea.selectionEnd = newCursorPos; closeAutocomplete(); inputArea.focus(); inputArea.dispatchEvent(new Event('input', { bubbles: true })); }
         
         // --- Event Listeners ---
         inputArea.addEventListener('input', () => { processAndHighlight(); handleAutocomplete(); });
@@ -357,6 +365,11 @@
         autocompletePopup.addEventListener('click', (e) => { const item = e.target.closest('.autocomplete-item'); if(item) acceptSuggestion(autocompleteState.suggestions[parseInt(item.dataset.index)]); });
         eraseButton.addEventListener('click', () => { inputArea.value = ''; processAndHighlight(); setDefaultCalculationName(); showMessage('Calculator cleared!'); });
         outputArea.addEventListener('click', (e) => { const header = e.target.closest('.loop-header'); if (header) { const targetId = header.dataset.targetId; const body = $(`#${targetId}`); const icon = header.querySelector('.toggle-icon'); if (body) { body.classList.toggle('hidden'); icon.classList.toggle('expanded'); icon.innerHTML = icon.classList.contains('expanded') ? '▼' : '►'; } } });
+        
+        // ADDED: Event listener for the mobile controls toggle button
+        toggleControlsButton.addEventListener('click', () => {
+            controlsPanel.classList.toggle('hidden');
+        });
 
         // --- Save/Load and other features ---
         for (let i = 1; i <= 3; i++) { $(`#save-${i}`).addEventListener('click', () => { const key = `instacalc_slot_${i}`; const data = { name: calculationNameInput.value, content: inputArea.value }; if (localStorage.getItem(key)) { confirmModal.classList.add('flex'); confirmModal.classList.remove('hidden'); $('#confirm-ok').onclick = () => { localStorage.setItem(key, JSON.stringify(data)); confirmModal.classList.add('hidden'); showMessage(`Saved to slot ${i}!`); }; $('#confirm-cancel').onclick = () => confirmModal.classList.add('hidden'); } else { localStorage.setItem(key, JSON.stringify(data)); showMessage(`Saved to slot ${i}!`); } }); $(`#load-${i}`).addEventListener('click', () => { const saved = localStorage.getItem(`instacalc_slot_${i}`); if (saved) { try { const data = JSON.parse(saved); calculationNameInput.value = data.name || 'Insta-Clone'; inputArea.value = data.content || ''; } catch (e) { inputArea.value = saved; setDefaultCalculationName(); } processAndHighlight(); showMessage(`Loaded from slot ${i}!`); } else { showMessage(`Slot ${i} is empty.`); } }); }

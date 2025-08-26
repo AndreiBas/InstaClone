@@ -113,7 +113,6 @@
 </head>
 <body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
 
-    <!-- MODIFIED: Added flex-1 to make this panel grow and fill vertical space on mobile -->
     <div class="w-full max-w-6xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row flex-1 md:flex-1 md:min-h-0">
         <!-- Left Panel: Input Area -->
         <div class="flex-1 flex flex-col p-4 md:p-8 h-72 md:h-auto min-h-0">
@@ -134,6 +133,13 @@
             <div class="flex justify-between items-center mb-2 h-12">
                 <h2 class="text-2xl font-bold text-white">Results</h2>
                 <div class="flex items-center space-x-3">
+                    <div class="flex items-center space-x-2">
+                        <label class="text-gray-400 text-sm">Clean view</label>
+                        <label class="toggle-switch-container">
+                            <input type="checkbox" id="cleanViewToggle">
+                            <span class="toggle-slider"></span>
+                        </label>
+                    </div>
                     <div class="flex items-center space-x-2">
                         <label class="text-gray-400 text-sm">No sleep</label>
                         <label class="toggle-switch-container">
@@ -156,14 +162,12 @@
         </div>
     </div>
 
-    <!-- ADDED: Button to toggle the controls on mobile -->
     <div class="w-full max-w-6xl mt-2 md:hidden">
         <button id="toggleControlsButton" class="w-full bg-gray-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-gray-600">
             Manage Saves & Files
         </button>
     </div>
 
-    <!-- MODIFIED: This entire section is now collapsible -->
     <div id="controls-panel" class="w-full max-w-6xl mt-4 p-4 md:p-6 bg-gray-800 rounded-2xl shadow-2xl hidden md:block">
         <h3 class="text-lg font-semibold text-white mb-2">Quick Save Slots</h3>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -222,6 +226,7 @@
         const messageBox = $('#message-box');
         const roundingToggle = $('#roundingToggle');
         const noSleepToggle = $('#noSleepToggle');
+        const cleanViewToggle = $('#cleanViewToggle');
         const helpButton = $('#helpButton');
         const helpModal = $('#help-modal');
         const helpContent = $('#help-content');
@@ -230,7 +235,6 @@
         const loadFromFileButton = $('#loadFromFileButton');
         const fileLoaderInput = $('#fileLoader');
         const shareButton = $('#shareButton');
-        // ADDED: Selectors for new mobile controls
         const toggleControlsButton = $('#toggleControlsButton');
         const controlsPanel = $('#controls-panel');
 
@@ -238,7 +242,7 @@
         let wakeLock = null;
         let autocompleteState = { active: false, suggestions: [], selectedIndex: -1, wordStartIndex: -1, currentWord: '' };
         
-        const HELP_CONTENT_INPUT = `// Welcome to Insta-Clone!\n// Variables are NOT case-sensitive.\n// For example, 'cost' and 'Cost' are the same.\n\nCost = 150\ntax_rate = 10\ntotal = Cost + tax_rate%`;
+        const HELP_CONTENT_INPUT = `// Example with a loop\ntotal_sum = 0\nfor i = 1 to 3\n  total_sum = total_sum + i // running total\nendfor\n\n// Final result is above.\nfinal_value = total_sum * 2`;
         const HELP_CONTENT_POPUP_HTML = `
             <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and more. Type on the left and see the results on the right.</p>
             <h5>Getting Started: The Basics</h5><p><strong>Variables:</strong> Names are <strong>not case-sensitive</strong> (so <code>rent</code> and <code>Rent</code> are the same).</p><code>rent = 1200\nutilities = 250\ntotal_cost = Rent + utilities</code>
@@ -272,7 +276,35 @@
         // --- Core Calculation Engine ---
         const calculate = (expression) => { if (!expression) return undefined; const pOfMatch = expression.match(/(\d+(?:\.\d+)?)%\s*of\s*(\d+(?:\.\d+)?)/i); if (pOfMatch) { const [, perc, num] = pOfMatch; return (parseFloat(perc) / 100) * parseFloat(num); } const convMatch = expression.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*to\s*([a-zA-Z]+)$/); if (convMatch) { const [, v, from, to] = convMatch.map(s => s.toLowerCase()); if (conversionRates[from]?.[to]) return parseFloat(v) * conversionRates[from][to]; return `Error: Unsupported conversion.`; } expression = expression.replace(/(\d+(?:\.\d+)?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)%/g, (m, b, op, p) => (op === '+' || op === '-') ? `${b} ${op} (${b} * ${parseFloat(p) / 100})` : `${b} ${op} ${parseFloat(p) / 100}`); try { const result = new Function(`return ${expression}`)(); return (typeof result === 'number' && !isNaN(result)) ? result : undefined; } catch { return undefined; } };
         const replaceVariables = (expr) => Object.keys(variables).sort((a, b) => b.length - a.length).reduce((e, key) => e.replace(new RegExp(`\\b${key}\\b`, 'gi'), variables[key]), expr);
-        const evaluateLine = (line) => { line = line.trim(); if (!line || line.startsWith('//') || line.startsWith('for') || line === 'endfor') return null; const assignMatch = line.match(/^([a-zA-Z_]\w*)\s*=\s*(.*)$/); if (assignMatch) { const [, varName, expr] = assignMatch; const result = calculate(replaceVariables(expr.trim())); variables[varName.toLowerCase()] = result; return result; } const dateMatch = line.match(/^today\s*([+\-])\s*([a-zA-Z_]\w*|\d+)\s*(days?|weeks?|months?|years?)$/i); if (dateMatch) { const [, op, val, unit] = dateMatch; const num = isNaN(val) ? parseInt(variables[val.toLowerCase()], 10) : parseInt(val, 10); if (isNaN(num)) return `Error: Invalid number.`; const today = new Date(); const mult = op === '+' ? 1 : -1; const u = unit.toLowerCase(); if (u.startsWith('day')) today.setDate(today.getDate() + num * mult); else if (u.startsWith('week')) today.setDate(today.getDate() + num * 7 * mult); else if (u.startsWith('month')) today.setMonth(today.getMonth() + num * mult); else if (u.startsWith('year')) today.setFullYear(today.getFullYear() + num * mult); return today.toDateString(); } return calculate(replaceVariables(line)); };
+        const evaluateLine = (line) => {
+            const commentIndex = line.indexOf('//');
+            let code = (commentIndex !== -1) ? line.substring(0, commentIndex) : line;
+            code = code.trim();
+
+            if (!code || code.startsWith('for') || code.toLowerCase() === 'endfor') return null;
+            const assignMatch = code.match(/^([a-zA-Z_]\w*)\s*=\s*(.*)$/);
+            if (assignMatch) {
+                const [, varName, expr] = assignMatch;
+                const result = calculate(replaceVariables(expr.trim()));
+                variables[varName.toLowerCase()] = result;
+                return result;
+            }
+            const dateMatch = code.match(/^today\s*([+\-])\s*([a-zA-Z_]\w*|\d+)\s*(days?|weeks?|months?|years?)$/i);
+            if (dateMatch) {
+                const [, op, val, unit] = dateMatch;
+                const num = isNaN(val) ? parseInt(variables[val.toLowerCase()], 10) : parseInt(val, 10);
+                if (isNaN(num)) return `Error: Invalid number.`;
+                const today = new Date();
+                const mult = op === '+' ? 1 : -1;
+                const u = unit.toLowerCase();
+                if (u.startsWith('day')) today.setDate(today.getDate() + num * mult);
+                else if (u.startsWith('week')) today.setDate(today.getDate() + num * 7 * mult);
+                else if (u.startsWith('month')) today.setMonth(today.getMonth() + num * mult);
+                else if (u.startsWith('year')) today.setFullYear(today.getFullYear() + num * mult);
+                return today.toDateString();
+            }
+            return calculate(replaceVariables(code));
+        };
         const formatResult = (r) => { if (typeof r === 'number' && roundingToggle.checked && !Number.isInteger(r)) return r.toFixed(2); return (r === undefined || r === null) ? '' : r; };
 
         // --- Syntax Highlighting Logic ---
@@ -282,73 +314,128 @@
         const processAndHighlight = () => {
             const text = inputArea.value;
             const lines = text.split('\n');
+            const isCleanView = cleanViewToggle.checked;
 
             // 1. Update Highlighting Layer
-            const definedVariables = new Set();
+            const definedVarsForHighlight = new Set();
             const highlightedHTML = lines.map((line, index) => {
-                const highlightedLine = highlightText(line, definedVariables);
+                const highlightedLine = highlightText(line, definedVarsForHighlight);
                 const varNameMatch = line.trim().match(/^([a-zA-Z_]\w*)\s*=/);
-                if (varNameMatch) {
-                    definedVariables.add(varNameMatch[1].toLowerCase());
-                }
+                if (varNameMatch) { definedVarsForHighlight.add(varNameMatch[1].toLowerCase()); }
                 return `<div data-line-id="${index}">${highlightedLine || '<br>'}</div>`;
             }).join('');
             highlightingArea.innerHTML = highlightedHTML;
 
             // 2. Update Calculation Results
             variables = {}; let outputHTML = ''; let loopIdCounter = 0;
+            
             for (let i = 0; i < lines.length; i++) {
-                const line = lines[i]; const trimmedLine = line.trim(); const forLoopMatch = trimmedLine.match(/^for\s+([a-zA-Z_]\w*)\s*=\s*(.*?)\s+to\s+(.*?)\s*$/i);
+                const line = lines[i];
+                const trimmedLine = line.trim();
+                const forLoopMatch = trimmedLine.match(/^for\s+([a-zA-Z_]\w*)\s*=\s*(.*?)\s+to\s+(.*?)\s*$/i);
+
                 if (forLoopMatch) {
-                    loopIdCounter++; const loopBodyId = `loop-body-${loopIdCounter}`; const [, iterator, startExpr, endExpr] = forLoopMatch; const iteratorLower = iterator.toLowerCase(); let endforIndex = -1; let nestingLevel = 0; for (let j = i + 1; j < lines.length; j++) { if (lines[j].trim().match(/^for\s/i)) nestingLevel++; if (lines[j].trim().toLowerCase() === 'endfor') { if (nestingLevel === 0) { endforIndex = j; break; } else { nestingLevel--; } } }
-                    if (endforIndex === -1) { outputHTML += `<div class="text-red-400 output-line" data-line-id="${i}">Error: Missing 'endfor'.</div>`; continue; }
-                    const highlightedHeader = highlightText(line, new Set(Object.keys(variables))); outputHTML += `<div class="loop-header output-line" data-line-id="${i}" data-target-id="${loopBodyId}"><span class="toggle-icon">►</span><div class="flex items-start output-highlight flex-1"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedHeader}</span></div></div>`;
-                    let loopBodyHTML = ''; const loopBodyLines = lines.slice(i + 1, endforIndex); const startValue = Math.round(calculate(replaceVariables(startExpr.trim()))); const endValue = Math.round(calculate(replaceVariables(endExpr.trim())));
-                    if (isNaN(startValue) || isNaN(endValue)) { loopBodyHTML = `<div class="text-red-400 ml-8">Error: Loop bounds must be numbers.</div>`; } else { for (let k = startValue; k <= endValue; k++) { variables[iteratorLower] = k; loopBodyLines.forEach(bodyLine => { const result = evaluateLine(bodyLine); const highlightedBodyLine = highlightText(bodyLine, new Set(Object.keys(variables))); if (result !== null && result !== undefined) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1">${highlightedBodyLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`; } else if (bodyLine.trim()) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedBodyLine}</span></div>`; } else { loopBodyHTML += `<div class="h-6 ml-8"></div>`; } }); } delete variables[iteratorLower]; }
-                    loopBodyHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${endforIndex}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightText(lines[endforIndex], new Set(Object.keys(variables)))}</span></div>`; outputHTML += `<div id="${loopBodyId}" class="loop-body hidden">${loopBodyHTML}</div>`; i = endforIndex;
-                } else if (trimmedLine.toLowerCase() === 'endfor') { outputHTML += `<div class="text-red-400 output-line" data-line-id="${i}">Error: Unexpected 'endfor'.</div>`;
-                } else {
-                    if (!trimmedLine) { outputHTML += `<div class="h-6 output-line" data-line-id="${i}"></div>`; } else { const lineVars = new Set(Object.keys(variables)); const result = evaluateLine(line); const highlightedLine = highlightText(line, lineVars); if (result !== null && result !== undefined) { outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1">${highlightedLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`; } else { outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedLine}</span></div>`; } }
+                    let endforIndex = -1; let nestingLevel = 0;
+                    for (let j = i + 1; j < lines.length; j++) { if (lines[j].trim().match(/^for\s/i)) nestingLevel++; if (lines[j].trim().toLowerCase() === 'endfor') { if (nestingLevel === 0) { endforIndex = j; break; } else { nestingLevel--; } } }
+                    if (endforIndex === -1) { if (!isCleanView) { outputHTML += `<div class="text-red-400 output-line" data-line-id="${i}">Error: Missing 'endfor'.</div>`; } continue; }
+
+                    const [, iterator, startExpr, endExpr] = forLoopMatch; const iteratorLower = iterator.toLowerCase();
+                    const startValue = Math.round(calculate(replaceVariables(startExpr.trim()))); const endValue = Math.round(calculate(replaceVariables(endExpr.trim())));
+                    
+                    if (!isCleanView) { // --- NORMAL VIEW LOOP LOGIC ---
+                        loopIdCounter++; const loopBodyId = `loop-body-${loopIdCounter}`;
+                        const highlightedHeader = highlightText(line, new Set(Object.keys(variables)));
+                        outputHTML += `<div class="loop-header output-line" data-line-id="${i}" data-target-id="${loopBodyId}"><span class="toggle-icon">►</span><div class="flex items-start output-highlight flex-1"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedHeader}</span></div></div>`;
+                        let loopBodyHTML = '';
+                        if (isNaN(startValue) || isNaN(endValue)) { loopBodyHTML = `<div class="text-red-400 ml-8">Error: Loop bounds must be numbers.</div>`; } 
+                        else {
+                            const loopBodyLines = lines.slice(i + 1, endforIndex);
+                            for (let k = startValue; k <= endValue; k++) {
+                                variables[iteratorLower] = k;
+                                loopBodyLines.forEach(bodyLine => {
+                                    const result = evaluateLine(bodyLine);
+                                    const highlightedBodyLine = highlightText(bodyLine, new Set(Object.keys(variables)));
+                                    if (result !== null && result !== undefined) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1">${highlightedBodyLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`; } 
+                                    else if (bodyLine.trim()) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedBodyLine}</span></div>`; } 
+                                    else { loopBodyHTML += `<div class="h-6 ml-8"></div>`; }
+                                });
+                            }
+                        }
+                        delete variables[iteratorLower];
+                        loopBodyHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${endforIndex}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightText(lines[endforIndex], new Set(Object.keys(variables)))}</span></div>`;
+                        outputHTML += `<div id="${loopBodyId}" class="loop-body hidden">${loopBodyHTML}</div>`;
+                    } else { // --- CLEAN VIEW LOOP LOGIC (SILENT EXECUTION) ---
+                        if (!isNaN(startValue) && !isNaN(endValue)) {
+                            const loopBodyLines = lines.slice(i + 1, endforIndex);
+                            for (let k = startValue; k <= endValue; k++) {
+                                variables[iteratorLower] = k;
+                                loopBodyLines.forEach(bodyLine => { evaluateLine(bodyLine); });
+                            }
+                        }
+                        delete variables[iteratorLower];
+                    }
+                    i = endforIndex; // Jump iterator past the processed loop
+                } else if (trimmedLine.toLowerCase() === 'endfor') {
+                    if (!isCleanView) outputHTML += `<div class="text-red-400 output-line" data-line-id="${i}">Error: Unexpected 'endfor'.</div>`;
+                } else { // --- NON-LOOP LINE LOGIC ---
+                    const lineVars = new Set(Object.keys(variables));
+                    const result = evaluateLine(line);
+                    
+                    if (isCleanView) {
+                        const commentIndex = line.indexOf('//');
+                        const codePart = (commentIndex !== -1) ? line.substring(0, commentIndex) : line;
+                        const trimmedCode = codePart.trim();
+                        const commentText = (commentIndex !== -1) ? line.substring(commentIndex + 2).trim() : null;
+                        const assignmentMatch = trimmedCode.match(/^([a-zA-Z_]\w*)\s*=\s*(.*)$/);
+
+                        let lineHTML = '';
+                        if (assignmentMatch) {
+                            const varName = assignmentMatch[1];
+                            const varClass = lineVars.has(varName.toLowerCase()) ? 'variable-redefined' : 'variable-new';
+                            const resultPart = `<span><span class="${varClass}">${varName}</span><span class="operator"> = </span><span class="text-green-400 font-bold">${formatResult(result)}</span></span>`;
+                            const commentPart = commentText ? `<span class="text-yellow-400 italic text-right pl-4">${commentText}</span>` : '';
+                            lineHTML = `<div class="flex justify-between items-start output-highlight output-line py-1" data-line-id="${i}">${resultPart}${commentPart}</div>`;
+                        } else if (trimmedCode && result !== null && result !== undefined) {
+                            const resultPart = `<span class="text-gray-400">= </span><span class="text-green-400">${formatResult(result)}</span>`;
+                            const commentPart = commentText ? `<span class="text-yellow-400 italic pl-4">${commentText}</span>` : '';
+                            lineHTML = `<div class="flex justify-end items-start output-highlight output-line py-1" data-line-id="${i}"><span>${resultPart}${commentPart}</span></div>`;
+                        } else if (commentText && !trimmedCode) {
+                            lineHTML = `<div class="text-yellow-400 italic py-1 output-line" data-line-id="${i}">${commentText}</div>`;
+                        } else if (trimmedCode) {
+                            lineHTML = `<div class="py-1 output-line" data-line-id="${i}">${highlightText(line, lineVars)}</div>`;
+                        } else if (!trimmedLine) {
+                            lineHTML = `<div class="h-6 output-line" data-line-id="${i}"></div>`;
+                        }
+                        outputHTML += lineHTML;
+                    } else {
+                        if (!trimmedLine) { outputHTML += `<div class="h-6 output-line" data-line-id="${i}"></div>`; } 
+                        else {
+                            const highlightedLine = highlightText(line, lineVars);
+                            if (result !== null && result !== undefined) { outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1">${highlightedLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`; } 
+                            else { outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedLine}</span></div>`; }
+                        }
+                    }
                 }
             }
             outputArea.innerHTML = outputHTML || '<div class="text-gray-400">Your results will appear here in real-time.</div>';
         };
-        
+
         // --- Autocomplete Logic ---
         const getAutocompleteKeywords = (textContent) => { const orderedVars = []; textContent.split('\n').forEach(line => { const match = line.trim().match(/^([a-zA-Z_]\w*)\s*=/); if (match) { const varName = match[1].toLowerCase(); const existingIndex = orderedVars.indexOf(varName); if (existingIndex > -1) orderedVars.splice(existingIndex, 1); orderedVars.push(varName); } }); const newestVarsFirst = orderedVars.reverse(); const specialKeywordsList = Object.keys(specialWords); return [...newestVarsFirst, ...specialKeywordsList.filter(k => !orderedVars.includes(k))]; };
         
         function updateAutocompletePopup() {
-            if (!autocompleteState.active || autocompleteState.suggestions.length === 0) {
-                return autocompletePopup.classList.add('hidden');
-            }
+            if (!autocompleteState.active || autocompleteState.suggestions.length === 0) { return autocompletePopup.classList.add('hidden'); }
             autocompletePopup.innerHTML = autocompleteState.suggestions.map((s, i) => `<div class="autocomplete-item ${i === autocompleteState.selectedIndex ? 'selected' : ''}" data-index="${i}">${s}</div>`).join('');
-
-            const mirror = $('#autocomplete-mirror');
-            const text = inputArea.value;
-            const cursorPos = inputArea.selectionStart;
-
-            mirror.style.width = `${inputArea.clientWidth}px`;
-            mirror.scrollTop = inputArea.scrollTop;
-            const textBeforeCursor = text.substring(0, cursorPos);
-            mirror.textContent = textBeforeCursor;
-
-            const marker = document.createElement('span');
-            marker.innerHTML = '&nbsp;';
-            mirror.appendChild(marker);
-
+            const mirror = $('#autocomplete-mirror'); const text = inputArea.value; const cursorPos = inputArea.selectionStart;
+            mirror.style.width = `${inputArea.clientWidth}px`; mirror.scrollTop = inputArea.scrollTop;
+            const textBeforeCursor = text.substring(0, cursorPos); mirror.textContent = textBeforeCursor;
+            const marker = document.createElement('span'); marker.innerHTML = '&nbsp;'; mirror.appendChild(marker);
             const lineHeight = parseFloat(getComputedStyle(inputArea).lineHeight);
-            let left = marker.offsetLeft;
-            let top = marker.offsetTop - inputArea.scrollTop + lineHeight;
-
+            let left = marker.offsetLeft; let top = marker.offsetTop - inputArea.scrollTop + lineHeight;
             mirror.textContent = '';
-
             const inputContainerRect = inputArea.parentElement.getBoundingClientRect();
-            autocompletePopup.style.left = `${left}px`;
-            autocompletePopup.style.top = `${top}px`;
-            if (top + autocompletePopup.offsetHeight > inputContainerRect.height) {
-                 autocompletePopup.style.top = `${top - lineHeight - autocompletePopup.offsetHeight - 5}px`;
-            }
-
+            autocompletePopup.style.left = `${left}px`; autocompletePopup.style.top = `${top}px`;
+            if (top + autocompletePopup.offsetHeight > inputContainerRect.height) { autocompletePopup.style.top = `${top - lineHeight - autocompletePopup.offsetHeight - 5}px`; }
             autocompletePopup.classList.remove('hidden');
         }
 
@@ -360,16 +447,13 @@
         inputArea.addEventListener('input', () => { processAndHighlight(); handleAutocomplete(); });
         inputArea.addEventListener('scroll', () => { highlightingArea.scrollTop = inputArea.scrollTop; highlightingArea.scrollLeft = inputArea.scrollLeft; });
         roundingToggle.addEventListener('change', processAndHighlight);
+        cleanViewToggle.addEventListener('change', processAndHighlight);
         inputArea.addEventListener('keydown', (event) => { if (autocompleteState.active) { if (['ArrowDown', 'ArrowUp', 'Escape', 'Enter', 'Tab'].includes(event.key)) { event.preventDefault(); if (event.key === 'ArrowDown') { autocompleteState.selectedIndex = (autocompleteState.selectedIndex + 1) % autocompleteState.suggestions.length; updateAutocompletePopup(); } else if (event.key === 'ArrowUp') { autocompleteState.selectedIndex = (autocompleteState.selectedIndex - 1 + autocompleteState.suggestions.length) % autocompleteState.suggestions.length; updateAutocompletePopup(); } else if (event.key === 'Escape') { closeAutocomplete(); } else if (event.key === 'Enter' || event.key === 'Tab') { acceptSuggestion(autocompleteState.suggestions[autocompleteState.selectedIndex]); } return; } } });
         document.addEventListener('click', (e) => !autocompletePopup.contains(e.target) && closeAutocomplete());
         autocompletePopup.addEventListener('click', (e) => { const item = e.target.closest('.autocomplete-item'); if(item) acceptSuggestion(autocompleteState.suggestions[parseInt(item.dataset.index)]); });
         eraseButton.addEventListener('click', () => { inputArea.value = ''; processAndHighlight(); setDefaultCalculationName(); showMessage('Calculator cleared!'); });
         outputArea.addEventListener('click', (e) => { const header = e.target.closest('.loop-header'); if (header) { const targetId = header.dataset.targetId; const body = $(`#${targetId}`); const icon = header.querySelector('.toggle-icon'); if (body) { body.classList.toggle('hidden'); icon.classList.toggle('expanded'); icon.innerHTML = icon.classList.contains('expanded') ? '▼' : '►'; } } });
-        
-        // ADDED: Event listener for the mobile controls toggle button
-        toggleControlsButton.addEventListener('click', () => {
-            controlsPanel.classList.toggle('hidden');
-        });
+        toggleControlsButton.addEventListener('click', () => { controlsPanel.classList.toggle('hidden'); });
 
         // --- Save/Load and other features ---
         for (let i = 1; i <= 3; i++) { $(`#save-${i}`).addEventListener('click', () => { const key = `instacalc_slot_${i}`; const data = { name: calculationNameInput.value, content: inputArea.value }; if (localStorage.getItem(key)) { confirmModal.classList.add('flex'); confirmModal.classList.remove('hidden'); $('#confirm-ok').onclick = () => { localStorage.setItem(key, JSON.stringify(data)); confirmModal.classList.add('hidden'); showMessage(`Saved to slot ${i}!`); }; $('#confirm-cancel').onclick = () => confirmModal.classList.add('hidden'); } else { localStorage.setItem(key, JSON.stringify(data)); showMessage(`Saved to slot ${i}!`); } }); $(`#load-${i}`).addEventListener('click', () => { const saved = localStorage.getItem(`instacalc_slot_${i}`); if (saved) { try { const data = JSON.parse(saved); calculationNameInput.value = data.name || 'Insta-Clone'; inputArea.value = data.content || ''; } catch (e) { inputArea.value = saved; setDefaultCalculationName(); } processAndHighlight(); showMessage(`Loaded from slot ${i}!`); } else { showMessage(`Slot ${i} is empty.`); } }); }

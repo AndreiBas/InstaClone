@@ -114,8 +114,8 @@
 <body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
 
     <div class="w-full max-w-6xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row flex-1 md:flex-1 md:min-h-0">
-        <!-- Left Panel: Input Area -->
-        <div class="flex-1 flex flex-col p-4 md:p-8 h-72 md:h-auto min-h-0">
+        <!-- MODIFIED: Removed fixed height h-72 to allow for 50/50 split on mobile -->
+        <div class="flex-1 flex flex-col p-4 md:p-8 md:h-auto min-h-0">
             <div class="flex justify-between items-center mb-2 h-12 gap-2 md:gap-4">
                 <input type="text" id="calculationNameInput" placeholder="Calculation Name..." class="text-xl md:text-2xl font-bold text-white bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-2 py-1 w-full -ml-2">
                 <button id="eraseButton" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg shadow-lg hover:bg-red-700 flex-shrink-0">Erase</button>
@@ -128,11 +128,13 @@
                 <div id="autocomplete-popup" class="hidden"></div>
             </div>
         </div>
-        <!-- Right Panel: Output Area -->
-        <div class="flex-1 flex flex-col p-4 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30 h-72 md:h-auto min-h-0">
-            <div class="flex justify-between items-center mb-2 h-12">
+        <!-- MODIFIED: Removed fixed height h-72 to allow for 50/50 split on mobile -->
+        <div class="flex-1 flex flex-col p-4 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30 md:h-auto min-h-0">
+            <!-- MODIFIED: Changed height from h-12 to h-auto and min-h-[3rem] to allow wrapping -->
+            <div class="flex justify-between items-center mb-2 min-h-[3rem] h-auto">
                 <h2 class="text-2xl font-bold text-white">Results</h2>
-                <div class="flex items-center space-x-3">
+                <!-- MODIFIED: Added flex-wrap and gap to prevent overlapping toggles -->
+                <div class="flex items-center justify-end flex-wrap gap-x-4 gap-y-2">
                     <div class="flex items-center space-x-2">
                         <label class="text-gray-400 text-sm">Clean view</label>
                         <label class="toggle-switch-container">
@@ -274,7 +276,7 @@
         const showMessage = (text) => { $('#message-text').textContent = text; messageBox.classList.remove('hidden'); setTimeout(() => messageBox.classList.remove('opacity-0'), 10); setTimeout(() => { messageBox.classList.add('opacity-0'); setTimeout(() => messageBox.classList.add('hidden'), 3000); }, 3000); };
         
         // --- Core Calculation Engine ---
-        const calculate = (expression) => { if (!expression) return undefined; const pOfMatch = expression.match(/(\d+(?:\.\d+)?)%\s*of\s*(\d+(?:\.\d+)?)/i); if (pOfMatch) { const [, perc, num] = pOfMatch; return (parseFloat(perc) / 100) * parseFloat(num); } const convMatch = expression.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*to\s*([a-zA-Z]+)$/); if (convMatch) { const [, v, from, to] = convMatch.map(s => s.toLowerCase()); if (conversionRates[from]?.[to]) return parseFloat(v) * conversionRates[from][to]; return `Error: Unsupported conversion.`; } expression = expression.replace(/(\d+(?:\.\d+)?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)%/g, (m, b, op, p) => (op === '+' || op === '-') ? `${b} ${op} (${b} * ${parseFloat(p) / 100})` : `${b} ${op} ${parseFloat(p) / 100}`); try { const result = new Function(`return ${expression}`)(); return (typeof result === 'number' && !isNaN(result)) ? result : undefined; } catch { return undefined; } };
+        const calculate = (expression) => { if (!expression) return undefined; const pOfMatch = expression.match(/(\d+(?:\.\d+)?)%\s*of\s*(\d+(?:\.\d+)?)/i); if (pOfMatch) { const [, perc, num] = pOfMatch; return (parseFloat(perc) / 100) * parseFloat(num); } const convMatch = expression.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*to\s*([a-zA-Z]+)$/); if (convMatch) { const [, v, from, to] = convMatch.map(s => s.toLowerCase()); if (conversionRates[from]?.[to]) return parseFloat(v) * conversionRates[from][to]; return `Error: Unsupported conversion.`; } expression = expression.replace(/(\d+(?:\.\d+)?)%\s*([+\-*/])\s*(\d+(?:\.\d+)?)%/g, (m, b, op, p) => (op === '+' || op === '-') ? `${b} ${op} (${b} * ${parseFloat(p) / 100})` : `${b} ${op} ${parseFloat(p) / 100}`); try { const result = new Function(`return ${expression}`)(); return (typeof result === 'number' && !isNaN(result)) ? result : undefined; } catch { return undefined; } };
         const replaceVariables = (expr) => Object.keys(variables).sort((a, b) => b.length - a.length).reduce((e, key) => e.replace(new RegExp(`\\b${key}\\b`, 'gi'), variables[key]), expr);
         const evaluateLine = (line) => {
             const commentIndex = line.indexOf('//');

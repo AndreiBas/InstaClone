@@ -16,7 +16,6 @@
         body {
             font-family: 'Inter', sans-serif;
         }
-        /* MODIFIED: Added overscroll-behavior to prevent pull-to-refresh on mobile */
         html, body {
             overscroll-behavior-y: contain;
         }
@@ -372,8 +371,9 @@
                                 loopBodyLines.forEach(bodyLine => {
                                     const result = evaluateLine(bodyLine);
                                     const highlightedBodyLine = highlightText(bodyLine, new Set(Object.keys(variables)));
-                                    if (result !== null && result !== undefined) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1">${highlightedBodyLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`; } 
-                                    else if (bodyLine.trim()) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedBodyLine}</span></div>`; } 
+                                    // MODIFIED: Added 'break-all' to prevent horizontal overflow on mobile
+                                    if (result !== null && result !== undefined) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1 break-all">${highlightedBodyLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`; } 
+                                    else if (bodyLine.trim()) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1 break-all">${highlightedBodyLine}</span></div>`; } 
                                     else { loopBodyHTML += `<div class="h-6 ml-8"></div>`; }
                                 });
                             }
@@ -428,8 +428,9 @@
                         if (!trimmedLine) { outputHTML += `<div class="h-6 output-line" data-line-id="${i}"></div>`; } 
                         else {
                             const highlightedLine = highlightText(line, lineVars);
-                            if (result !== null && result !== undefined) { outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1">${highlightedLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`; } 
-                            else { outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedLine}</span></div>`; }
+                            // MODIFIED: Added 'break-all' to prevent horizontal overflow on mobile
+                            if (result !== null && result !== undefined) { outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1 break-all">${highlightedLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`; } 
+                            else { outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1 break-all">${highlightedLine}</span></div>`; }
                         }
                     }
                 }

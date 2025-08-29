@@ -16,6 +16,11 @@
         body {
             font-family: 'Inter', sans-serif;
         }
+        /* MODIFIED: Added overscroll-behavior to prevent pull-to-refresh on mobile */
+        html, body {
+            overscroll-behavior-y: contain;
+        }
+
         /* Custom scrollbar styles */
         ::-webkit-scrollbar { width: 8px; }
         ::-webkit-scrollbar-track { background: #1f2937; }
@@ -113,7 +118,7 @@
 </head>
 <body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
 
-    <!-- MODIFIED: Added md:max-h-[80vh] to limit vertical size on desktop screens -->
+    <!-- Main content area with vertical constraint for desktop -->
     <div class="w-full max-w-screen-2xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 flex-1 min-h-0 md:max-h-[80vh]">
         <!-- Input Panel -->
         <div class="flex flex-col p-4 md:p-8 min-h-0">
@@ -460,7 +465,7 @@
         inputArea.addEventListener('scroll', () => { highlightingArea.scrollTop = inputArea.scrollTop; highlightingArea.scrollLeft = inputArea.scrollLeft; });
         roundingToggle.addEventListener('change', processAndHighlight);
         cleanViewToggle.addEventListener('change', processAndHighlight);
-        inputArea.addEventListener('keydown', (event) => { if (autocompleteState.active) { if (['ArrowDown', 'ArrowUp', 'Escape', 'Enter', 'Tab'].includes(event.key)) { event.preventDefault(); if (event.key === 'ArrowDown') { autocompleteState.selectedIndex = (autocompleteState.selectedIndex + 1) % autocompleteState.suggestions.length; updateAutocompletePopup(); } else if (event.key === 'ArrowUp') { autocompleteState.selectedIndex = (autocompleteState.selectedIndex - 1 + autocompleteState.suggestions.length) % autocompleteState.suggestions.length; updateAutocompletePopup(); } else if (event.key === 'Escape') { closeAutocomplete(); } else if (event.key === 'Enter' || event.key === 'Tab') { acceptSuggestion(autocompleteState.suggestions[selectedIndex]); } return; } } });
+        inputArea.addEventListener('keydown', (event) => { if (autocompleteState.active) { if (['ArrowDown', 'ArrowUp', 'Escape', 'Enter', 'Tab'].includes(event.key)) { event.preventDefault(); if (event.key === 'ArrowDown') { autocompleteState.selectedIndex = (autocompleteState.selectedIndex + 1) % autocompleteState.suggestions.length; updateAutocompletePopup(); } else if (event.key === 'ArrowUp') { autocompleteState.selectedIndex = (autocompleteState.selectedIndex - 1 + autocompleteState.suggestions.length) % autocompleteState.suggestions.length; updateAutocompletePopup(); } else if (event.key === 'Escape') { closeAutocomplete(); } else if (event.key === 'Enter' || event.key === 'Tab') { acceptSuggestion(autocompleteState.suggestions[autocompleteState.selectedIndex]); } return; } } });
         document.addEventListener('click', (e) => !autocompletePopup.contains(e.target) && closeAutocomplete());
         autocompletePopup.addEventListener('click', (e) => { const item = e.target.closest('.autocomplete-item'); if(item) acceptSuggestion(autocompleteState.suggestions[parseInt(item.dataset.index)]); });
         eraseButton.addEventListener('click', () => { inputArea.value = ''; processAndHighlight(); setDefaultCalculationName(); showMessage('Calculator cleared!'); });
@@ -511,4 +516,4 @@
         });
     </script>
 </body>
-</html>```
+</html>

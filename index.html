@@ -113,8 +113,8 @@
 </head>
 <body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
 
-    <!-- MODIFIED: Changed layout from Flexbox to CSS Grid for robust panel sizing -->
-    <div class="w-full max-w-6xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 flex-1 min-h-0">
+    <!-- MODIFIED: Changed max-w-6xl to max-w-screen-2xl for a wider layout -->
+    <div class="w-full max-w-screen-2xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 flex-1 min-h-0">
         <!-- MODIFIED: Removed sizing classes like flex-1, md:w-1/2. The parent grid now controls sizing. Added min-h-0. -->
         <div class="flex flex-col p-4 md:p-8 min-h-0">
             <div class="flex justify-between items-center mb-2 h-12 gap-2 md:gap-4 flex-shrink-0">
@@ -163,13 +163,15 @@
         </div>
     </div>
 
-    <div class="w-full max-w-6xl mt-2 md:hidden">
+    <!-- MODIFIED: Changed max-w-6xl to max-w-screen-2xl for a wider layout -->
+    <div class="w-full max-w-screen-2xl mt-2 md:hidden">
         <button id="toggleControlsButton" class="w-full bg-gray-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-gray-600">
             Manage Saves & Files
         </button>
     </div>
 
-    <div id="controls-panel" class="w-full max-w-6xl mt-4 p-4 md:p-6 bg-gray-800 rounded-2xl shadow-2xl hidden md:block">
+    <!-- MODIFIED: Changed max-w-6xl to max-w-screen-2xl for a wider layout -->
+    <div id="controls-panel" class="w-full max-w-screen-2xl mt-4 p-4 md:p-6 bg-gray-800 rounded-2xl shadow-2xl hidden md:block">
         <h3 class="text-lg font-semibold text-white mb-2">Quick Save Slots</h3>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <button id="save-1" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 1</button>
@@ -243,11 +245,11 @@
         let wakeLock = null;
         let autocompleteState = { active: false, suggestions: [], selectedIndex: -1, wordStartIndex: -1, currentWord: '' };
         
-        const HELP_CONTENT_INPUT = `// Example with a loop\ntotal_sum = 0\nfor i = 1 to 3\n  total_sum = total_sum + i // running total\nendfor\n\n// Final result is above.\nfinal_value = total_sum * 2`;
+        const HELP_CONTENT_INPUT = `// Example with a loop\ntotal_sum = 0\nfor i = 1 to 3\n  total_sum = total_sum + i // running total\nendfor\n\n// Final result is above.\nfinal_value = total_sum ^ 2`;
         const HELP_CONTENT_POPUP_HTML = `
             <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and more. Type on the left and see the results on the right.</p>
             <h5>Getting Started: The Basics</h5><p><strong>Variables:</strong> Names are <strong>not case-sensitive</strong> (so <code>rent</code> and <code>Rent</code> are the same).</p><code>rent = 1200\nutilities = 250\ntotal_cost = Rent + utilities</code>
-            <p><strong>Math Operations:</strong> Use standard operators like <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code> and group with parentheses <code>()</code>.</p><code>(100 - 25) * 2</code>
+            <p><strong>Math Operations:</strong> Use standard operators like <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code> (for exponents), and group with parentheses <code>()</code>.</p><code>(100 - 25) * 2^3</code>
             <p><strong>Comments:</strong> Use <code>//</code> to add notes. Anything after it on a line is ignored.</p><code>income = 5000 // Gross monthly salary</code>
             <h5>Advanced Calculations</h5><p><strong>Percentages:</strong> Easily add, subtract, or find a percentage.</p><code>500 + 10%       // Adds 10% of 500\n120 - 25%       // Subtracts 25% of 120\n15% of 300      // Calculates 15% of 300</code>
             <p><strong>Date Math:</strong> Use the <code>today</code> keyword to find future or past dates.</p><code>project_due = today + 90 days\nlast_meeting = today - 3 weeks</code>
@@ -275,7 +277,17 @@
         const showMessage = (text) => { $('#message-text').textContent = text; messageBox.classList.remove('hidden'); setTimeout(() => messageBox.classList.remove('opacity-0'), 10); setTimeout(() => { messageBox.classList.add('opacity-0'); setTimeout(() => messageBox.classList.add('hidden'), 3000); }, 3000); };
         
         // --- Core Calculation Engine ---
-        const calculate = (expression) => { if (!expression) return undefined; const pOfMatch = expression.match(/(\d+(?:\.\d+)?)%\s*of\s*(\d+(?:\.\d+)?)/i); if (pOfMatch) { const [, perc, num] = pOfMatch; return (parseFloat(perc) / 100) * parseFloat(num); } const convMatch = expression.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*to\s*([a-zA-Z]+)$/); if (convMatch) { const [, v, from, to] = convMatch.map(s => s.toLowerCase()); if (conversionRates[from]?.[to]) return parseFloat(v) * conversionRates[from][to]; return `Error: Unsupported conversion.`; } expression = expression.replace(/(\d+(?:\.\d+)?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)%/g, (m, b, op, p) => (op === '+' || op === '-') ? `${b} ${op} (${b} * ${parseFloat(p) / 100})` : `${b} ${op} ${parseFloat(p) / 100}`); try { const result = new Function(`return ${expression}`)(); return (typeof result === 'number' && !isNaN(result)) ? result : undefined; } catch { return undefined; } };
+        const calculate = (expression) => { 
+            if (!expression) return undefined; 
+            const pOfMatch = expression.match(/(\d+(?:\.\d+)?)%\s*of\s*(\d+(?:\.\d+)?)/i); 
+            if (pOfMatch) { const [, perc, num] = pOfMatch; return (parseFloat(perc) / 100) * parseFloat(num); } 
+            const convMatch = expression.match(/(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*to\s*([a-zA-Z]+)$/); 
+            if (convMatch) { const [, v, from, to] = convMatch.map(s => s.toLowerCase()); if (conversionRates[from]?.[to]) return parseFloat(v) * conversionRates[from][to]; return `Error: Unsupported conversion.`; } 
+            expression = expression.replace(/(\d+(?:\.\d+)?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)%/g, (m, b, op, p) => (op === '+' || op === '-') ? `${b} ${op} (${b} * ${parseFloat(p) / 100})` : `${b} ${op} ${parseFloat(p) / 100}`); 
+            // MODIFIED: Replace the '^' operator with JavaScript's '**' for exponentiation.
+            expression = expression.replace(/\^/g, '**');
+            try { const result = new Function(`return ${expression}`)(); return (typeof result === 'number' && !isNaN(result)) ? result : undefined; } catch { return undefined; } 
+        };
         const replaceVariables = (expr) => Object.keys(variables).sort((a, b) => b.length - a.length).reduce((e, key) => e.replace(new RegExp(`\\b${key}\\b`, 'gi'), variables[key]), expr);
         const evaluateLine = (line) => {
             const commentIndex = line.indexOf('//');
@@ -309,7 +321,7 @@
         const formatResult = (r) => { if (typeof r === 'number' && roundingToggle.checked && !Number.isInteger(r)) return r.toFixed(2); return (r === undefined || r === null) ? '' : r; };
 
         // --- Syntax Highlighting Logic ---
-        const highlightText = (line, definedVars) => { const escapeHtml = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); const cIdx = line.indexOf('//'); const code = cIdx !== -1 ? line.substring(0, cIdx) : line; const comment = cIdx !== -1 ? `<span class="comment">${escapeHtml(line.substring(cIdx))}</span>` : ''; const varNameOnLine = (code.trim().match(/^([a-zA-Z_]\w*)\s*=/) || [])[1]?.toLowerCase(); const tokens = code.split(/(\b[a-zA-Z_]\w*\b|=|\s+)/).filter(Boolean); const processed = tokens.map(t => { const trimmed = t.trim().toLowerCase(); if (!t.trim()) return t; if (t === '=') return `<span class="operator">${t}</span>`; if (specialWords[trimmed]) return `<span class="${specialWords[trimmed]}">${escapeHtml(t)}</span>`; if (trimmed === varNameOnLine) return `<span class="${definedVars.has(trimmed) ? 'variable-redefined' : 'variable-new'}">${escapeHtml(t)}</span>`; if (definedVars.has(trimmed)) return `<span class="variable-used">${escapeHtml(t)}</span>`; return escapeHtml(t); }).join(''); return processed + comment; };
+        const highlightText = (line, definedVars) => { const escapeHtml = (t) => t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); const cIdx = line.indexOf('//'); const code = cIdx !== -1 ? line.substring(0, cIdx) : line; const comment = cIdx !== -1 ? `<span class="comment">${escapeHtml(line.substring(cIdx))}</span>` : ''; const varNameOnLine = (code.trim().match(/^([a-zA-Z_]\w*)\s*=/) || [])[1]?.toLowerCase(); const tokens = code.split(/(\b[a-zA-Z_]\w*\b|=|\s+|\^)/).filter(Boolean); const processed = tokens.map(t => { const trimmed = t.trim().toLowerCase(); if (!t.trim()) return t; if (t === '=' || t === '^') return `<span class="operator">${t}</span>`; if (specialWords[trimmed]) return `<span class="${specialWords[trimmed]}">${escapeHtml(t)}</span>`; if (trimmed === varNameOnLine) return `<span class="${definedVars.has(trimmed) ? 'variable-redefined' : 'variable-new'}">${escapeHtml(t)}</span>`; if (definedVars.has(trimmed)) return `<span class="variable-used">${escapeHtml(t)}</span>`; return escapeHtml(t); }).join(''); return processed + comment; };
 
         // --- Main Processing Function ---
         const processAndHighlight = () => {

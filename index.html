@@ -105,8 +105,11 @@
         /* Styles for Help & Variables Modal Content */
         #help-content h5, #variables-content h5 { font-size: 1.125rem; font-weight: 600; color: #c084fc; margin-top: 1.25rem; margin-bottom: 0.75rem; border-bottom: 1px solid #4b5563; padding-bottom: 0.25rem; }
         #help-content code { display: block; background-color: #111827; padding: 0.75rem; border-radius: 0.375rem; margin-top: 0.5rem; white-space: pre-wrap; font-family: 'Courier New', Courier, monospace; color: #9ca3af; }
-        #help-content p { margin-bottom: 0.5rem; }
+        #help-content p, #help-content ul { margin-bottom: 0.5rem; }
         #help-content strong { color: #a5b4fc; font-weight: 500; }
+        #help-content ul { list-style-position: inside; padding-left: 1rem; }
+        #help-content li { margin-bottom: 0.25rem; }
+
 
         /* Style for line highlighting on hover */
         .line-highlight {
@@ -117,6 +120,16 @@
         /* Add a cursor pointer to all output lines to indicate they are clickable */
         .output-line {
             cursor: pointer;
+        }
+
+        /* Styles for clickable variable rows in the modal */
+        .variable-row {
+            cursor: pointer;
+            border-radius: 0.25rem;
+            transition: background-color 0.2s ease-in-out;
+        }
+        .variable-row:hover {
+            background-color: rgba(75, 85, 99, 0.5); /* Same as line-highlight */
         }
     </style>
 </head>
@@ -196,7 +209,6 @@
             <button id="saveToFileButton" class="bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 flex-grow sm:flex-grow-0">Save to File</button>
             <button id="loadFromFileButton" class="bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 flex-grow sm:flex-grow-0">Load from File</button>
             <button id="shareButton" class="bg-teal-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-teal-700 flex-grow sm:flex-grow-0">Share</button>
-            <!-- ADDED: New "Variables" button -->
             <button id="variablesButton" class="bg-cyan-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-cyan-700 flex-grow sm:flex-grow-0">Variables</button>
             <button id="helpButton" class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg shadow-md hover:bg-purple-700 flex-grow sm:flex-grow-0">Show Help</button>
         </div>
@@ -224,7 +236,6 @@
             </div>
         </div>
     </div>
-    <!-- ADDED: New Modal for Variables -->
     <div id="variables-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
         <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-2xl border border-gray-700 flex flex-col max-h-[80vh]">
             <h4 class="text-2xl font-bold mb-4 text-white">Current Variables</h4>
@@ -261,30 +272,61 @@
         const shareButton = $('#shareButton');
         const toggleControlsButton = $('#toggleControlsButton');
         const controlsPanel = $('#controls-panel');
-        // ADDED: New element selectors for the variables modal
         const variablesButton = $('#variablesButton');
         const variablesModal = $('#variables-modal');
         const variablesContent = $('#variables-content');
         const variablesCloseButton = $('#variables-close-button');
 
         let variables = {};
-        // ADDED: A map to store the final state of variables in order of definition
         let orderedVariables = new Map();
         let wakeLock = null;
         let autocompleteState = { active: false, suggestions: [], selectedIndex: -1, wordStartIndex: -1, currentWord: '' };
         
         const HELP_CONTENT_INPUT = `// Example with a loop\ntotal_sum = 0\nfor i = 1 to 3\n  total_sum = total_sum + i // running total\nendfor\n\n// Final result is above.\nfinal_value = total_sum ^ 2`;
+        
         const HELP_CONTENT_POPUP_HTML = `
-            <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and more. Type on the left and see the results on the right.</p>
-            <h5>Getting Started: The Basics</h5><p><strong>Variables:</strong> Names are <strong>not case-sensitive</strong> (so <code>rent</code> and <code>Rent</code> are the same).</p><code>rent = 1200\nutilities = 250\ntotal_cost = Rent + utilities</code>
-            <p><strong>Math Operations:</strong> Use standard operators like <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code> (for exponents), and group with parentheses <code>()</code>.</p><code>(100 - 25) * 2^3</code>
-            <p><strong>Comments:</strong> Use <code>//</code> to add notes. Anything after it on a line is ignored.</p><code>income = 5000 // Gross monthly salary</code>
-            <h5>Advanced Calculations</h5><p><strong>Percentages:</strong> Easily add, subtract, or find a percentage.</p><code>500 + 10%       // Adds 10% of 500\n120 - 25%       // Subtracts 25% of 120\n15% of 300      // Calculates 15% of 300</code>
-            <p><strong>Date Math:</strong> Use the <code>today</code> keyword to find future or past dates.</p><code>project_due = today + 90 days\nlast_meeting = today - 3 weeks</code>
-            <p><strong>Unit Conversions:</strong> Convert values using the format: <code>value from_unit to to_unit</code>.</p><code>100 usd to gbp\n2.5 m to ft\n10 cm to inch</code>
-            <h5>Automating with Loops</h5><p><strong>For Loops:</strong> Run code multiple times with <code>for variable = start to end</code> and finish with <code>endfor</code>.</p><code>total = 0\nfor i = 1 to 5\n  total = total + i\nendfor</code>
-            <h5>Managing Your Work</h5><p><strong>Calculation Name:</strong> Edit the name at the top-left. This is used when saving to a file.</p><p><strong>Quick Save & Load:</strong> Use the "Save 1/2/3" and "Load 1/2/3" buttons for quick storage in your browser.</p><p><strong>Save & Load from File:</strong> Use "Save to File" to download your work. Use "Load from File" to open it later.</p><p><strong>Share:</strong> Click "Share" to copy a unique link to your clipboard. Anyone with the link will see your exact calculation.</p>
-            <h5>Interface & Tips</h5><p><strong>Autocomplete:</strong> Start typing a variable or keyword and a suggestion box will appear. Press <strong>Tab</strong> or <strong>Enter</strong> to accept.</p><p><strong>Line Highlighting:</strong> Hover your mouse over a line in the Results panel to see the corresponding input line highlighted.</p><p><strong>Collapsible Results:</strong> In the Results panel, click the '►' icon on a loop header to expand or collapse its output.</p><p><strong>Rounding Toggle:</strong> Enable this to format all decimal results to two decimal places.</p><p><strong>No Sleep Toggle:</strong> Enable this to prevent your device's screen from turning off.</p>
+            <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and special commands. Type in the Input panel and see your results appear instantly on the right.</p>
+            
+            <h5>Basic Calculations</h5>
+            <p><strong>Math Operations:</strong> Use standard operators like <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code> (for exponents), and group expressions with parentheses <code>()</code>.</p>
+            <code>(100 - 25) * 2^3</code>
+            <p><strong>Variables:</strong> Create variables to store numbers and use them in later calculations. Names are <strong>not case-sensitive</strong> (so <code>rent</code> and <code>Rent</code> are the same variable).</p>
+            <code>rent = 1200\nutilities = 250\ntotal_cost = Rent + utilities</code>
+            <p><strong>Comments:</strong> Use <code>//</code> to add notes. Anything after <code>//</code> on a line is ignored by the calculator, but is useful for documentation.</p>
+            <code>income = 5000 // Gross monthly salary</code>
+
+            <h5>Advanced Features</h5>
+            <p><strong>Percentages:</strong> Easily add, subtract, or find a percentage of a number.</p>
+            <code>500 + 10%       // Adds 10% of 500 (result: 550)\n120 - 25%       // Subtracts 25% of 120 (result: 90)\n15% of 300      // Calculates 15% of 300 (result: 45)</code>
+            <p><strong>Date Math:</strong> Use the <code>today</code> keyword to calculate future or past dates.</p>
+            <code>project_due = today + 90 days\nlast_meeting = today - 3 weeks</code>
+            <p><strong>Unit Conversions:</strong> Convert values using the format: <code>value from_unit to to_unit</code>.</p>
+            <code>100 usd to gbp\n2.5 m to ft\n10 cm to inch</code>
+
+            <h5>Automation with Loops</h5>
+            <p><strong>For Loops:</strong> Run a block of code multiple times. Start with <code>for variable = start to end</code> and finish the block with <code>endfor</code>.</p>
+            <code>total = 0\nfor i = 1 to 5\n  total = total + i // This line runs 5 times\nendfor</code>
+
+            <h5>Managing Your Work</h5>
+            <p><strong>Calculation Name:</strong> Edit the name at the top-left. This name is used when saving to a file.</p>
+            <p><strong>Quick Save & Load:</strong> Use the "Save 1/2/3" and "Load 1/2/3" buttons for quick access to your calculations, stored in your browser.</p>
+            <p><strong>Save & Load File:</strong> Use "Save to File" to download your work as a <code>.txt</code> file. Use "Load from File" to open it later.</p>
+            <p><strong>Share:</strong> Click "Share" to copy a unique link to your clipboard. Anyone with the link will see your exact calculation.</p>
+            <p><strong>Variables Panel:</strong> Click the "Variables" button to open a summary of every variable in your calculation. It shows their final values and any comments you added. <strong>You can click on any variable in this list to instantly jump to its last definition in the Input panel!</strong></p>
+
+            <h5>Interface Tips & Tricks</h5>
+            <p><strong>Autocomplete:</strong> Start typing a variable name or a keyword (like <code>for</code> or <code>usd</code>). A suggestion box will appear. Press <strong>Tab</strong> or <strong>Enter</strong> to accept a suggestion.</p>
+            <p><strong>Interactive Results Panel:</strong></p>
+            <ul>
+                <li><strong>Click to Scroll:</strong> Click on any line in the Results panel to instantly scroll the Input panel to the corresponding line.</li>
+                <li><strong>Line Highlighting:</strong> Hover your mouse over a result to highlight both the result line and the input line that generated it.</li>
+                <li><strong>Collapsible Loops:</strong> In the Results panel, click the '►' icon next to a loop's header to expand or collapse its detailed output.</li>
+            </ul>
+
+            <h5>Result Panel Toggles</h5>
+            <p><strong>Clean view:</strong> Hides the step-by-step calculations and shows a clean, simple summary of your results.</p>
+            <p><strong>No sleep:</strong> Prevents your device's screen from turning off automatically. Useful for long calculations or presentations.</p>
+            <p><strong>Round:</strong> Formats all decimal results to two decimal places for cleaner financial or scientific readouts.</p>
         `;
 
         const inchRates = { cm: 2.54, m: 0.0254, ft: 1/12 };
@@ -304,6 +346,27 @@
         const setDefaultCalculationName = () => { const today = new Date(); const mm = String(today.getMonth() + 1).padStart(2, '0'); const dd = String(today.getDate()).padStart(2, '0'); const yy = today.getFullYear().toString().slice(-2); calculationNameInput.value = `Insta-Clone ${mm}-${dd}-${yy}`; };
         const showMessage = (text) => { $('#message-text').textContent = text; messageBox.classList.remove('hidden'); setTimeout(() => messageBox.classList.remove('opacity-0'), 10); setTimeout(() => { messageBox.classList.add('opacity-0'); setTimeout(() => messageBox.classList.add('hidden'), 3000); }, 3000); };
         
+        // FIXED: Replaced reliance on browser auto-scroll with a more robust manual scroll calculation.
+        const scrollToLine = (lineIndex) => {
+            // First, set the cursor position.
+            const lines = inputArea.value.split('\n');
+            if (lineIndex < 0 || lineIndex >= lines.length) return;
+            let charIndex = 0;
+            for (let i = 0; i < lineIndex; i++) {
+                charIndex += lines[i].length + 1; // +1 for the newline character
+            }
+            inputArea.focus();
+            inputArea.setSelectionRange(charIndex, charIndex);
+
+            // Second, manually calculate and set the scroll position.
+            const targetLineDiv = $(`#highlightingArea [data-line-id="${lineIndex}"]`);
+            if (targetLineDiv) {
+                // Use the highlighter div's position to scroll the actual textarea.
+                // 'auto' behavior is instant, which is better than 'smooth' here.
+                inputArea.scrollTo({ top: targetLineDiv.offsetTop, behavior: 'auto' });
+            }
+        };
+
         // --- Core Calculation Engine ---
         const calculate = (expression) => { 
             if (!expression) return undefined; 
@@ -316,7 +379,8 @@
             try { const result = new Function(`return ${expression}`)(); return (typeof result === 'number' && !isNaN(result)) ? result : undefined; } catch { return undefined; } 
         };
         const replaceVariables = (expr) => Object.keys(variables).sort((a, b) => b.length - a.length).reduce((e, key) => e.replace(new RegExp(`\\b${key}\\b`, 'gi'), variables[key]), expr);
-        const evaluateLine = (line) => {
+        
+        const evaluateLine = (line, lineNumber) => {
             const commentIndex = line.indexOf('//');
             let code = (commentIndex !== -1) ? line.substring(0, commentIndex) : line;
             code = code.trim();
@@ -328,9 +392,8 @@
                 const result = calculate(replaceVariables(expr.trim()));
                 variables[varName.toLowerCase()] = result;
                 
-                // ADDED: Track the final state of variables for the new modal
                 const commentText = (commentIndex !== -1) ? line.substring(commentIndex + 2).trim() : null;
-                orderedVariables.set(varName.toLowerCase(), { value: result, comment: commentText });
+                orderedVariables.set(varName.toLowerCase(), { value: result, comment: commentText, line: lineNumber });
 
                 return result;
             }
@@ -361,7 +424,6 @@
             const lines = text.split('\n');
             const isCleanView = cleanViewToggle.checked;
 
-            // 1. Update Highlighting Layer
             const definedVarsForHighlight = new Set();
             const highlightedHTML = lines.map((line, index) => {
                 const highlightedLine = highlightText(line, definedVarsForHighlight);
@@ -371,9 +433,8 @@
             }).join('');
             highlightingArea.innerHTML = highlightedHTML;
 
-            // 2. Update Calculation Results
             variables = {}; 
-            orderedVariables = new Map(); // Reset for each full calculation run
+            orderedVariables = new Map();
             let outputHTML = ''; 
             let loopIdCounter = 0;
             
@@ -390,7 +451,7 @@
                     const [, iterator, startExpr, endExpr] = forLoopMatch; const iteratorLower = iterator.toLowerCase();
                     const startValue = Math.round(calculate(replaceVariables(startExpr.trim()))); const endValue = Math.round(calculate(replaceVariables(endExpr.trim())));
                     
-                    if (!isCleanView) { // --- NORMAL VIEW LOOP LOGIC ---
+                    if (!isCleanView) {
                         loopIdCounter++; const loopBodyId = `loop-body-${loopIdCounter}`;
                         const highlightedHeader = highlightText(line, new Set(Object.keys(variables)));
                         outputHTML += `<div class="loop-header output-line" data-line-id="${i}" data-target-id="${loopBodyId}"><span class="toggle-icon">►</span><div class="flex items-start output-highlight flex-1"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedHeader}</span></div></div>`;
@@ -402,7 +463,7 @@
                                 variables[iteratorLower] = k;
                                 loopBodyLines.forEach((bodyLine, bodyLineIndex) => {
                                     const originalLineId = i + 1 + bodyLineIndex;
-                                    const result = evaluateLine(bodyLine);
+                                    const result = evaluateLine(bodyLine, originalLineId);
                                     const highlightedBodyLine = highlightText(bodyLine, new Set(Object.keys(variables)));
                                     if (result !== null && result !== undefined) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8 output-line" data-line-id="${originalLineId}"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1 break-all">${highlightedBodyLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`; } 
                                     else if (bodyLine.trim()) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8 output-line" data-line-id="${originalLineId}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1 break-all">${highlightedBodyLine}</span></div>`; } 
@@ -413,22 +474,22 @@
                         delete variables[iteratorLower];
                         loopBodyHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${endforIndex}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightText(lines[endforIndex], new Set(Object.keys(variables)))}</span></div>`;
                         outputHTML += `<div id="${loopBodyId}" class="loop-body hidden">${loopBodyHTML}</div>`;
-                    } else { // --- CLEAN VIEW LOOP LOGIC (SILENT EXECUTION) ---
+                    } else {
                         if (!isNaN(startValue) && !isNaN(endValue)) {
                             const loopBodyLines = lines.slice(i + 1, endforIndex);
                             for (let k = startValue; k <= endValue; k++) {
                                 variables[iteratorLower] = k;
-                                loopBodyLines.forEach(bodyLine => { evaluateLine(bodyLine); });
+                                loopBodyLines.forEach((bodyLine, bodyLineIndex) => { evaluateLine(bodyLine, i + 1 + bodyLineIndex); });
                             }
                         }
                         delete variables[iteratorLower];
                     }
-                    i = endforIndex; // Jump iterator past the processed loop
+                    i = endforIndex;
                 } else if (trimmedLine.toLowerCase() === 'endfor') {
                     if (!isCleanView) outputHTML += `<div class="text-red-400 output-line" data-line-id="${i}">Error: Unexpected 'endfor'.</div>`;
-                } else { // --- NON-LOOP LINE LOGIC ---
+                } else {
                     const lineVars = new Set(Object.keys(variables));
-                    const result = evaluateLine(line);
+                    const result = evaluateLine(line, i);
                     
                     if (isCleanView) {
                         const commentIndex = line.indexOf('//');
@@ -508,27 +569,12 @@
                 const targetId = header.dataset.targetId;
                 const body = $(`#${targetId}`);
                 const icon = header.querySelector('.toggle-icon');
-                if (body) {
-                    body.classList.toggle('hidden');
-                    icon.classList.toggle('expanded');
-                    icon.innerHTML = icon.classList.contains('expanded') ? '▼' : '►';
-                }
+                if (body) { body.classList.toggle('hidden'); icon.classList.toggle('expanded'); icon.innerHTML = icon.classList.contains('expanded') ? '▼' : '►'; }
                 return;
             }
-
             const targetLine = e.target.closest('.output-line');
-            if (targetLine) {
-                const lineId = targetLine.dataset.lineId;
-                if (lineId) {
-                    const lines = inputArea.value.split('\n');
-                    const targetLineIndex = parseInt(lineId, 10);
-                    let charIndex = 0;
-                    for (let i = 0; i < targetLineIndex; i++) {
-                        charIndex += lines[i].length + 1; // +1 for the newline character
-                    }
-                    inputArea.focus();
-                    inputArea.setSelectionRange(charIndex, charIndex);
-                }
+            if (targetLine && targetLine.dataset.lineId) {
+                scrollToLine(parseInt(targetLine.dataset.lineId, 10));
             }
         });
 
@@ -545,20 +591,18 @@
         helpButton.addEventListener('click', () => { helpModal.classList.remove('hidden'); helpModal.classList.add('flex'); });
         helpCloseButton.addEventListener('click', () => { helpModal.classList.add('hidden'); helpModal.classList.remove('flex'); });
 
-        // ADDED: Logic for the new variables modal
+        // --- Variables Modal Logic ---
         const populateVariablesModal = () => {
             if (orderedVariables.size === 0) {
                 variablesContent.innerHTML = `<div class="text-gray-400">No variables have been defined yet.</div>`;
                 return;
             }
-
-            let contentHTML = '<div class="grid grid-cols-[1fr,1fr,2fr] gap-4 items-center border-b border-gray-600 pb-2 mb-2 text-sm text-gray-400"><h5>Variable</h5><h5 class="text-center">Final Value</h5><h5 class="text-right">Comment</h5></div>';
-            
+            let contentHTML = '<div class="grid grid-cols-[1fr,1fr,2fr] gap-x-4 items-center border-b border-gray-600 pb-2 mb-2 text-sm text-gray-400"><h5>Variable</h5><h5 class="text-center">Final Value</h5><h5 class="text-right">Comment</h5></div>';
             for (const [name, data] of orderedVariables.entries()) {
                 const formattedValue = formatResult(data.value);
                 const commentText = data.comment ? `// ${data.comment}` : '';
                 contentHTML += `
-                    <div class="grid grid-cols-[1fr,1fr,2fr] gap-4 items-start py-1 border-b border-gray-700/50">
+                    <div class="variable-row grid grid-cols-[1fr,1fr,2fr] gap-x-4 items-start py-1 border-b border-gray-700/50" data-line-index="${data.line}">
                         <span class="variable-new font-bold break-all">${name}</span>
                         <span class="text-center text-green-400 break-all">${formattedValue}</span>
                         <span class="text-right text-yellow-400 italic text-sm break-all">${commentText}</span>
@@ -578,6 +622,18 @@
             variablesModal.classList.remove('flex');
         });
 
+        variablesContent.addEventListener('click', (e) => {
+            const row = e.target.closest('.variable-row');
+            if (row && row.dataset.lineIndex) {
+                const lineIndex = parseInt(row.dataset.lineIndex, 10);
+                variablesModal.classList.add('hidden');
+                variablesModal.classList.remove('flex');
+                
+                setTimeout(() => {
+                    scrollToLine(lineIndex);
+                }, 0);
+            }
+        });
 
         // --- Line Highlighting Logic ---
         const clearHighlights = () => { document.querySelectorAll('.line-highlight').forEach(el => el.classList.remove('line-highlight')); };

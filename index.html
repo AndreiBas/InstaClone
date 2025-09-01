@@ -113,6 +113,11 @@
             background-color: rgba(75, 85, 99, 0.5); /* gray-600 with 50% opacity */
             transition: background-color 0.1s ease-in-out;
         }
+        
+        /* Add a cursor pointer to all output lines to indicate they are clickable */
+        .output-line {
+            cursor: pointer;
+        }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
@@ -368,13 +373,13 @@
                             const loopBodyLines = lines.slice(i + 1, endforIndex);
                             for (let k = startValue; k <= endValue; k++) {
                                 variables[iteratorLower] = k;
-                                loopBodyLines.forEach(bodyLine => {
+                                loopBodyLines.forEach((bodyLine, bodyLineIndex) => {
+                                    const originalLineId = i + 1 + bodyLineIndex;
                                     const result = evaluateLine(bodyLine);
                                     const highlightedBodyLine = highlightText(bodyLine, new Set(Object.keys(variables)));
-                                    // MODIFIED: Added 'break-all' to prevent horizontal overflow on mobile
-                                    if (result !== null && result !== undefined) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1 break-all">${highlightedBodyLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`; } 
-                                    else if (bodyLine.trim()) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1 break-all">${highlightedBodyLine}</span></div>`; } 
-                                    else { loopBodyHTML += `<div class="h-6 ml-8"></div>`; }
+                                    if (result !== null && result !== undefined) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8 output-line" data-line-id="${originalLineId}"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1 break-all">${highlightedBodyLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`; } 
+                                    else if (bodyLine.trim()) { loopBodyHTML += `<div class="flex items-start output-highlight ml-8 output-line" data-line-id="${originalLineId}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1 break-all">${highlightedBodyLine}</span></div>`; } 
+                                    else { loopBodyHTML += `<div class="h-6 ml-8 output-line" data-line-id="${originalLineId}"></div>`; }
                                 });
                             }
                         }
@@ -428,7 +433,6 @@
                         if (!trimmedLine) { outputHTML += `<div class="h-6 output-line" data-line-id="${i}"></div>`; } 
                         else {
                             const highlightedLine = highlightText(line, lineVars);
-                            // MODIFIED: Added 'break-all' to prevent horizontal overflow on mobile
                             if (result !== null && result !== undefined) { outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-blue-400 font-bold">></span><span class="flex-1 break-all">${highlightedLine}</span><span class="flex-1 text-right text-gray-400">= <span class="text-green-400">${formatResult(result)}</span></span></div>`; } 
                             else { outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1 break-all">${highlightedLine}</span></div>`; }
                         }
@@ -470,7 +474,42 @@
         document.addEventListener('click', (e) => !autocompletePopup.contains(e.target) && closeAutocomplete());
         autocompletePopup.addEventListener('click', (e) => { const item = e.target.closest('.autocomplete-item'); if(item) acceptSuggestion(autocompleteState.suggestions[parseInt(item.dataset.index)]); });
         eraseButton.addEventListener('click', () => { inputArea.value = ''; processAndHighlight(); setDefaultCalculationName(); showMessage('Calculator cleared!'); });
-        outputArea.addEventListener('click', (e) => { const header = e.target.closest('.loop-header'); if (header) { const targetId = header.dataset.targetId; const body = $(`#${targetId}`); const icon = header.querySelector('.toggle-icon'); if (body) { body.classList.toggle('hidden'); icon.classList.toggle('expanded'); icon.innerHTML = icon.classList.contains('expanded') ? '▼' : '►'; } } });
+        
+        // FIXED: Replaced manual scrolling with a simpler, more reliable cursor placement method.
+        outputArea.addEventListener('click', (e) => {
+            const header = e.target.closest('.loop-header');
+            if (header) {
+                const targetId = header.dataset.targetId;
+                const body = $(`#${targetId}`);
+                const icon = header.querySelector('.toggle-icon');
+                if (body) {
+                    body.classList.toggle('hidden');
+                    icon.classList.toggle('expanded');
+                    icon.innerHTML = icon.classList.contains('expanded') ? '▼' : '►';
+                }
+                return;
+            }
+
+            const targetLine = e.target.closest('.output-line');
+            if (targetLine) {
+                const lineId = targetLine.dataset.lineId;
+                if (lineId) {
+                    // The most reliable way to scroll is to move the cursor.
+                    // The browser will automatically scroll the textarea to bring the cursor into view.
+                    const lines = inputArea.value.split('\n');
+                    const targetLineIndex = parseInt(lineId, 10);
+                    
+                    let charIndex = 0;
+                    for (let i = 0; i < targetLineIndex; i++) {
+                        charIndex += lines[i].length + 1; // +1 for the newline character
+                    }
+                    
+                    inputArea.focus();
+                    inputArea.setSelectionRange(charIndex, charIndex);
+                }
+            }
+        });
+
         toggleControlsButton.addEventListener('click', () => { controlsPanel.classList.toggle('hidden'); });
 
         // --- Save/Load and other features ---

@@ -102,8 +102,8 @@
         .toggle-icon { margin-right: 0.5rem; color: #9ca3af; transition: transform 0.2s; width: 1rem; }
         .toggle-icon.expanded { transform: rotate(90deg); }
         
-        /* Styles for Help Modal Content */
-        #help-content h5 { font-size: 1.125rem; font-weight: 600; color: #c084fc; margin-top: 1.25rem; margin-bottom: 0.75rem; border-bottom: 1px solid #4b5563; padding-bottom: 0.25rem; }
+        /* Styles for Help & Variables Modal Content */
+        #help-content h5, #variables-content h5 { font-size: 1.125rem; font-weight: 600; color: #c084fc; margin-top: 1.25rem; margin-bottom: 0.75rem; border-bottom: 1px solid #4b5563; padding-bottom: 0.25rem; }
         #help-content code { display: block; background-color: #111827; padding: 0.75rem; border-radius: 0.375rem; margin-top: 0.5rem; white-space: pre-wrap; font-family: 'Courier New', Courier, monospace; color: #9ca3af; }
         #help-content p { margin-bottom: 0.5rem; }
         #help-content strong { color: #a5b4fc; font-weight: 500; }
@@ -113,7 +113,7 @@
             background-color: rgba(75, 85, 99, 0.5); /* gray-600 with 50% opacity */
             transition: background-color 0.1s ease-in-out;
         }
-        
+
         /* Add a cursor pointer to all output lines to indicate they are clickable */
         .output-line {
             cursor: pointer;
@@ -196,6 +196,8 @@
             <button id="saveToFileButton" class="bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 flex-grow sm:flex-grow-0">Save to File</button>
             <button id="loadFromFileButton" class="bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 flex-grow sm:flex-grow-0">Load from File</button>
             <button id="shareButton" class="bg-teal-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-teal-700 flex-grow sm:flex-grow-0">Share</button>
+            <!-- ADDED: New "Variables" button -->
+            <button id="variablesButton" class="bg-cyan-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-cyan-700 flex-grow sm:flex-grow-0">Variables</button>
             <button id="helpButton" class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg shadow-md hover:bg-purple-700 flex-grow sm:flex-grow-0">Show Help</button>
         </div>
         <input type="file" id="fileLoader" class="hidden" accept=".txt,.text/plain,.json">
@@ -219,6 +221,16 @@
             <div id="help-content" class="flex-1 overflow-y-auto text-gray-300 space-y-4 pr-4"></div>
             <div class="flex justify-end mt-6">
                 <button id="help-close-button" class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-purple-700">Got it!</button>
+            </div>
+        </div>
+    </div>
+    <!-- ADDED: New Modal for Variables -->
+    <div id="variables-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
+        <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-2xl border border-gray-700 flex flex-col max-h-[80vh]">
+            <h4 class="text-2xl font-bold mb-4 text-white">Current Variables</h4>
+            <div id="variables-content" class="flex-1 overflow-y-auto text-gray-300 space-y-2 pr-4 font-mono"></div>
+            <div class="flex justify-end mt-6">
+                <button id="variables-close-button" class="bg-cyan-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-cyan-700">Close</button>
             </div>
         </div>
     </div>
@@ -249,8 +261,15 @@
         const shareButton = $('#shareButton');
         const toggleControlsButton = $('#toggleControlsButton');
         const controlsPanel = $('#controls-panel');
+        // ADDED: New element selectors for the variables modal
+        const variablesButton = $('#variablesButton');
+        const variablesModal = $('#variables-modal');
+        const variablesContent = $('#variables-content');
+        const variablesCloseButton = $('#variables-close-button');
 
         let variables = {};
+        // ADDED: A map to store the final state of variables in order of definition
+        let orderedVariables = new Map();
         let wakeLock = null;
         let autocompleteState = { active: false, suggestions: [], selectedIndex: -1, wordStartIndex: -1, currentWord: '' };
         
@@ -308,6 +327,11 @@
                 const [, varName, expr] = assignMatch;
                 const result = calculate(replaceVariables(expr.trim()));
                 variables[varName.toLowerCase()] = result;
+                
+                // ADDED: Track the final state of variables for the new modal
+                const commentText = (commentIndex !== -1) ? line.substring(commentIndex + 2).trim() : null;
+                orderedVariables.set(varName.toLowerCase(), { value: result, comment: commentText });
+
                 return result;
             }
             const dateMatch = code.match(/^today\s*([+\-])\s*([a-zA-Z_]\w*|\d+)\s*(days?|weeks?|months?|years?)$/i);
@@ -348,7 +372,10 @@
             highlightingArea.innerHTML = highlightedHTML;
 
             // 2. Update Calculation Results
-            variables = {}; let outputHTML = ''; let loopIdCounter = 0;
+            variables = {}; 
+            orderedVariables = new Map(); // Reset for each full calculation run
+            let outputHTML = ''; 
+            let loopIdCounter = 0;
             
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
@@ -475,7 +502,6 @@
         autocompletePopup.addEventListener('click', (e) => { const item = e.target.closest('.autocomplete-item'); if(item) acceptSuggestion(autocompleteState.suggestions[parseInt(item.dataset.index)]); });
         eraseButton.addEventListener('click', () => { inputArea.value = ''; processAndHighlight(); setDefaultCalculationName(); showMessage('Calculator cleared!'); });
         
-        // FIXED: Replaced manual scrolling with a simpler, more reliable cursor placement method.
         outputArea.addEventListener('click', (e) => {
             const header = e.target.closest('.loop-header');
             if (header) {
@@ -494,16 +520,12 @@
             if (targetLine) {
                 const lineId = targetLine.dataset.lineId;
                 if (lineId) {
-                    // The most reliable way to scroll is to move the cursor.
-                    // The browser will automatically scroll the textarea to bring the cursor into view.
                     const lines = inputArea.value.split('\n');
                     const targetLineIndex = parseInt(lineId, 10);
-                    
                     let charIndex = 0;
                     for (let i = 0; i < targetLineIndex; i++) {
                         charIndex += lines[i].length + 1; // +1 for the newline character
                     }
-                    
                     inputArea.focus();
                     inputArea.setSelectionRange(charIndex, charIndex);
                 }
@@ -519,8 +541,43 @@
         fileLoaderInput.addEventListener('change', (event) => { if (!event.target.files.length) return; const file = event.target.files[0]; const reader = new FileReader(); reader.onload = (e) => { const content = e.target.result; try { const data = JSON.parse(content); if (data?.content !== undefined) { calculationNameInput.value = data.name || 'Insta-Clone'; inputArea.value = data.content; } else { throw new Error("Not our format"); } } catch (err) { inputArea.value = content; calculationNameInput.value = file.name.replace(/\.[^/.]+$/, ""); } processAndHighlight(); showMessage(`File "${file.name}" loaded!`); }; reader.onerror = () => showMessage(`Error reading file.`); reader.readAsText(file); event.target.value = null; });
         shareButton.addEventListener('click', () => { const data = { name: calculationNameInput.value, content: inputArea.value }; if (!data.content.trim()) { showMessage('Nothing to share!'); return; } try { const compressed = pako.deflate(JSON.stringify(data)); let bin = ''; for (let i = 0; i < compressed.length; i++) bin += String.fromCharCode(compressed[i]); const url = `${location.origin}${location.pathname}?data=${encodeURIComponent(btoa(bin))}`; navigator.clipboard.writeText(url).then(() => showMessage('Share link copied!'), () => showMessage('Failed to copy.')); } catch (e) { showMessage('Could not create share link.'); } });
         noSleepToggle.addEventListener('change', async (e) => { if (e.target.checked) { if ('wakeLock' in navigator) { try { wakeLock = await navigator.wakeLock.request('screen'); wakeLock.addEventListener('release', () => { if(e.target.checked) { e.target.checked = false; showMessage('Wake lock released.'); }}); showMessage('Screen wake lock active.'); } catch (err) { showMessage(`Error: ${err.message}`); e.target.checked = false; } } else { showMessage('Wake Lock API not supported.'); e.target.checked = false; } } else if (wakeLock) { wakeLock.release(); wakeLock = null; } });
+        
         helpButton.addEventListener('click', () => { helpModal.classList.remove('hidden'); helpModal.classList.add('flex'); });
         helpCloseButton.addEventListener('click', () => { helpModal.classList.add('hidden'); helpModal.classList.remove('flex'); });
+
+        // ADDED: Logic for the new variables modal
+        const populateVariablesModal = () => {
+            if (orderedVariables.size === 0) {
+                variablesContent.innerHTML = `<div class="text-gray-400">No variables have been defined yet.</div>`;
+                return;
+            }
+
+            let contentHTML = '<div class="grid grid-cols-[1fr,1fr,2fr] gap-4 items-center border-b border-gray-600 pb-2 mb-2 text-sm text-gray-400"><h5>Variable</h5><h5 class="text-center">Final Value</h5><h5 class="text-right">Comment</h5></div>';
+            
+            for (const [name, data] of orderedVariables.entries()) {
+                const formattedValue = formatResult(data.value);
+                const commentText = data.comment ? `// ${data.comment}` : '';
+                contentHTML += `
+                    <div class="grid grid-cols-[1fr,1fr,2fr] gap-4 items-start py-1 border-b border-gray-700/50">
+                        <span class="variable-new font-bold break-all">${name}</span>
+                        <span class="text-center text-green-400 break-all">${formattedValue}</span>
+                        <span class="text-right text-yellow-400 italic text-sm break-all">${commentText}</span>
+                    </div>
+                `;
+            }
+            variablesContent.innerHTML = contentHTML;
+        };
+
+        variablesButton.addEventListener('click', () => {
+            populateVariablesModal();
+            variablesModal.classList.remove('hidden');
+            variablesModal.classList.add('flex');
+        });
+        variablesCloseButton.addEventListener('click', () => {
+            variablesModal.classList.add('hidden');
+            variablesModal.classList.remove('flex');
+        });
+
 
         // --- Line Highlighting Logic ---
         const clearHighlights = () => { document.querySelectorAll('.line-highlight').forEach(el => el.classList.remove('line-highlight')); };

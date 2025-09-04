@@ -282,7 +282,7 @@
         let wakeLock = null;
         let autocompleteState = { active: false, suggestions: [], selectedIndex: -1, wordStartIndex: -1, currentWord: '' };
         
-        const HELP_CONTENT_INPUT = `// Example with a loop and dynamic comment\ntotal_sum = 0\nfor i = 1 to 3\n  total_sum = total_sum + i // running total is {total_sum}\nendfor\n\n// Final result is {total_sum}.\nfinal_value = total_sum ^ 2`;
+        const HELP_CONTENT_INPUT = `// Example with a loop and dynamic comment\ntotal_sum = 0\nfor i = 1 to 3\n  total_sum = total_sum + i // running total is {total_sum}\nendfor\n\nHiddenBlock\n  // This block is for setup and won't show in Clean View\n  adjustment_factor = 1.1\nHiddenEnd\n\n// Final result is {total_sum}.\nfinal_value = total_sum ^ 2 * adjustment_factor`;
         
         const HELP_CONTENT_POPUP_HTML = `
             <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and special commands. Type in the Input panel and see your results appear instantly on the right.</p>
@@ -308,6 +308,8 @@
             <code>total = 0\nfor i = 1 to 5\n  total = total + i // This line runs 5 times\nendfor</code>
 
             <h5>Managing Your Work</h5>
+            <p><strong>Hiding Calculations (Clean View Only):</strong> You can hide intermediate steps or setup calculations from the final summary. Wrap any lines you want to hide between <code>HiddenBlock</code> and <code>HiddenEnd</code>. These calculations will still run and update variables, but they won't appear in the Results panel when 'Clean View' is on.</p>
+            <code>// --- Setup Calculations ---\nHiddenBlock\n  base_rate = 150\n  tax_multiplier = 1.2\nHiddenEnd\n\n// --- Final Result ---\nfinal_price = base_rate * tax_multiplier // The final price is {final_price}</code>
             <p><strong>Calculation Name:</strong> Edit the name at the top-left. This name is used when saving to a file.</p>
             <p><strong>Quick Save & Load:</strong> Use the "Save 1/2/3" and "Load 1/2/3" buttons for quick access to your calculations, stored in your browser.</p>
             <p><strong>Save & Load File:</strong> Use "Save to File" to download your work as a <code>.txt</code> file. Use "Load from File" to open it later.</p>
@@ -338,6 +340,7 @@
 
         const specialWords = {
             'today': 'keyword', 'to': 'keyword', 'for': 'keyword', 'endfor': 'keyword', 'of': 'keyword',
+            'hiddenblock': 'keyword', 'hiddenend': 'keyword', // ADDED Hidden block keywords
             'usd': 'unit', 'eur': 'unit', 'gbp': 'unit', 'm': 'unit', 'ft': 'unit', 'cm': 'unit', 'kg': 'unit', 'lb': 'unit', 'in': 'unit', 'inch': 'unit',
             'days': 'unit', 'day': 'unit', 'weeks': 'unit', 'week': 'unit', 'months': 'unit', 'month': 'unit', 'years': 'unit', 'year': 'unit', 'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
         };
@@ -346,7 +349,6 @@
         const setDefaultCalculationName = () => { const today = new Date(); const mm = String(today.getMonth() + 1).padStart(2, '0'); const dd = String(today.getDate()).padStart(2, '0'); const yy = today.getFullYear().toString().slice(-2); calculationNameInput.value = `Insta-Clone ${mm}-${dd}-${yy}`; };
         const showMessage = (text) => { $('#message-text').textContent = text; messageBox.classList.remove('hidden'); setTimeout(() => messageBox.classList.remove('opacity-0'), 10); setTimeout(() => { messageBox.classList.add('opacity-0'); setTimeout(() => messageBox.classList.add('hidden'), 3000); }, 3000); };
         
-        // ADDED: New function to interpolate variables into comment strings.
         const interpolateComment = (comment, vars) => {
             if (!comment) return comment;
             return comment.replace(/{([a-zA-Z_]\w*)}/g, (match, varName) => {
@@ -354,7 +356,7 @@
                 if (vars.hasOwnProperty(lowerVarName)) {
                     return formatResult(vars[lowerVarName]);
                 }
-                return match; // If variable not found, return the original placeholder {var}
+                return match;
             });
         };
 
@@ -363,7 +365,7 @@
             if (lineIndex < 0 || lineIndex >= lines.length) return;
             let charIndex = 0;
             for (let i = 0; i < lineIndex; i++) {
-                charIndex += lines[i].length + 1; // +1 for the newline character
+                charIndex += lines[i].length + 1;
             }
             inputArea.focus();
             inputArea.setSelectionRange(charIndex, charIndex);
@@ -392,7 +394,7 @@
             let code = (commentIndex !== -1) ? line.substring(0, commentIndex) : line;
             code = code.trim();
 
-            if (!code || code.startsWith('for') || code.toLowerCase() === 'endfor') return null;
+            if (!code || code.startsWith('for') || ['endfor', 'hiddenblock', 'hiddenend'].includes(code.toLowerCase())) return null;
             const assignMatch = code.match(/^([a-zA-Z_]\w*)\s*=\s*(.*)$/);
             if (assignMatch) {
                 const [, varName, expr] = assignMatch;
@@ -444,22 +446,41 @@
             orderedVariables = new Map();
             let outputHTML = ''; 
             let loopIdCounter = 0;
+            let isHiddenBlockActive = false; // MODIFIED: State for hidden block
             
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
                 const trimmedLine = line.trim();
+                const lowerTrimmedLine = trimmedLine.toLowerCase();
+
+                // MODIFIED: Logic to handle HiddenBlock state
+                if (lowerTrimmedLine === 'hiddenblock') {
+                    isHiddenBlockActive = true;
+                    if (!isCleanView) { // Still show the directive in detailed view
+                         outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1 break-all">${highlightText(line, new Set(Object.keys(variables)))}</span></div>`;
+                    }
+                    continue;
+                }
+                if (lowerTrimmedLine === 'hiddenend') {
+                    isHiddenBlockActive = false;
+                     if (!isCleanView) { // Still show the directive in detailed view
+                        outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1 break-all">${highlightText(line, new Set(Object.keys(variables)))}</span></div>`;
+                    }
+                    continue;
+                }
+
                 const forLoopMatch = trimmedLine.match(/^for\s+([a-zA-Z_]\w*)\s*=\s*(.*?)\s+to\s+(.*?)\s*$/i);
 
                 if (forLoopMatch) {
                     let endforIndex = -1; let nestingLevel = 0;
                     for (let j = i + 1; j < lines.length; j++) { if (lines[j].trim().match(/^for\s/i)) nestingLevel++; if (lines[j].trim().toLowerCase() === 'endfor') { if (nestingLevel === 0) { endforIndex = j; break; } else { nestingLevel--; } } }
-                    if (endforIndex === -1) { if (!isCleanView) { outputHTML += `<div class="text-red-400 output-line" data-line-id="${i}">Error: Missing 'endfor'.</div>`; } continue; }
+                    if (endforIndex === -1) { if (!isCleanView && !isHiddenBlockActive) { outputHTML += `<div class="text-red-400 output-line" data-line-id="${i}">Error: Missing 'endfor'.</div>`; } continue; }
 
                     const [, iterator, startExpr, endExpr] = forLoopMatch; const iteratorLower = iterator.toLowerCase();
                     const startValue = Math.round(calculate(replaceVariables(startExpr.trim())));
                     const endValue = Math.round(calculate(replaceVariables(endExpr.trim())));
                     
-                    if (!isCleanView) {
+                    if (!isCleanView) { // Detailed view logic for loops is unchanged
                         loopIdCounter++; const loopBodyId = `loop-body-${loopIdCounter}`;
                         const highlightedHeader = highlightText(line, new Set(Object.keys(variables)));
                         outputHTML += `<div class="loop-header output-line" data-line-id="${i}" data-target-id="${loopBodyId}"><span class="toggle-icon">►</span><div class="flex items-start output-highlight flex-1"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedHeader}</span></div></div>`;
@@ -482,7 +503,7 @@
                         delete variables[iteratorLower];
                         loopBodyHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${endforIndex}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightText(lines[endforIndex], new Set(Object.keys(variables)))}</span></div>`;
                         outputHTML += `<div id="${loopBodyId}" class="loop-body hidden">${loopBodyHTML}</div>`;
-                    } else {
+                    } else { // Clean view logic for loops - just execute, no output
                         if (!isNaN(startValue) && !isNaN(endValue)) {
                             const loopBodyLines = lines.slice(i + 1, endforIndex);
                             for (let k = startValue; k <= endValue; k++) {
@@ -493,17 +514,18 @@
                         delete variables[iteratorLower];
                     }
                     i = endforIndex;
-                } else if (trimmedLine.toLowerCase() === 'endfor') {
-                    if (!isCleanView) outputHTML += `<div class="text-red-400 output-line" data-line-id="${i}">Error: Unexpected 'endfor'.</div>`;
+                } else if (lowerTrimmedLine === 'endfor') {
+                    if (!isCleanView && !isHiddenBlockActive) outputHTML += `<div class="text-red-400 output-line" data-line-id="${i}">Error: Unexpected 'endfor'.</div>`;
                 } else {
                     const lineVars = new Set(Object.keys(variables));
                     const result = evaluateLine(line, i);
                     
                     if (isCleanView) {
+                        if (isHiddenBlockActive) continue; // MODIFIED: If in hidden block, skip all output for this line
+
                         const commentIndex = line.indexOf('//');
                         const codePart = (commentIndex !== -1) ? line.substring(0, commentIndex) : line;
                         const trimmedCode = codePart.trim();
-                        // MODIFIED: Interpolate variables into the comment text before displaying it.
                         const rawCommentText = (commentIndex !== -1) ? line.substring(commentIndex + 2).trim() : null;
                         const commentText = interpolateComment(rawCommentText, variables);
                         const assignmentMatch = trimmedCode.match(/^([a-zA-Z_]\w*)\s*=\s*(.*)$/);
@@ -527,7 +549,7 @@
                             lineHTML = `<div class="h-6 output-line" data-line-id="${i}"></div>`;
                         }
                         outputHTML += lineHTML;
-                    } else {
+                    } else { // Detailed View
                         if (!trimmedLine) { outputHTML += `<div class="h-6 output-line" data-line-id="${i}"></div>`; } 
                         else {
                             const highlightedLine = highlightText(line, lineVars);

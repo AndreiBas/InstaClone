@@ -340,7 +340,7 @@
 
         const specialWords = {
             'today': 'keyword', 'to': 'keyword', 'for': 'keyword', 'endfor': 'keyword', 'of': 'keyword',
-            'hiddenblock': 'keyword', 'hiddenend': 'keyword', // ADDED Hidden block keywords
+            'hiddenblock': 'keyword', 'hiddenend': 'keyword',
             'usd': 'unit', 'eur': 'unit', 'gbp': 'unit', 'm': 'unit', 'ft': 'unit', 'cm': 'unit', 'kg': 'unit', 'lb': 'unit', 'in': 'unit', 'inch': 'unit',
             'days': 'unit', 'day': 'unit', 'weeks': 'unit', 'week': 'unit', 'months': 'unit', 'month': 'unit', 'years': 'unit', 'year': 'unit', 'hours': 'unit', 'hour': 'unit', 'minutes': 'unit', 'minute': 'unit',
         };
@@ -446,24 +446,23 @@
             orderedVariables = new Map();
             let outputHTML = ''; 
             let loopIdCounter = 0;
-            let isHiddenBlockActive = false; // MODIFIED: State for hidden block
+            let isHiddenBlockActive = false;
             
             for (let i = 0; i < lines.length; i++) {
                 const line = lines[i];
                 const trimmedLine = line.trim();
                 const lowerTrimmedLine = trimmedLine.toLowerCase();
 
-                // MODIFIED: Logic to handle HiddenBlock state
                 if (lowerTrimmedLine === 'hiddenblock') {
                     isHiddenBlockActive = true;
-                    if (!isCleanView) { // Still show the directive in detailed view
+                    if (!isCleanView) {
                          outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1 break-all">${highlightText(line, new Set(Object.keys(variables)))}</span></div>`;
                     }
                     continue;
                 }
                 if (lowerTrimmedLine === 'hiddenend') {
                     isHiddenBlockActive = false;
-                     if (!isCleanView) { // Still show the directive in detailed view
+                     if (!isCleanView) {
                         outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1 break-all">${highlightText(line, new Set(Object.keys(variables)))}</span></div>`;
                     }
                     continue;
@@ -480,7 +479,7 @@
                     const startValue = Math.round(calculate(replaceVariables(startExpr.trim())));
                     const endValue = Math.round(calculate(replaceVariables(endExpr.trim())));
                     
-                    if (!isCleanView) { // Detailed view logic for loops is unchanged
+                    if (!isCleanView) {
                         loopIdCounter++; const loopBodyId = `loop-body-${loopIdCounter}`;
                         const highlightedHeader = highlightText(line, new Set(Object.keys(variables)));
                         outputHTML += `<div class="loop-header output-line" data-line-id="${i}" data-target-id="${loopBodyId}"><span class="toggle-icon">►</span><div class="flex items-start output-highlight flex-1"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightedHeader}</span></div></div>`;
@@ -503,7 +502,7 @@
                         delete variables[iteratorLower];
                         loopBodyHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${endforIndex}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1">${highlightText(lines[endforIndex], new Set(Object.keys(variables)))}</span></div>`;
                         outputHTML += `<div id="${loopBodyId}" class="loop-body hidden">${loopBodyHTML}</div>`;
-                    } else { // Clean view logic for loops - just execute, no output
+                    } else {
                         if (!isNaN(startValue) && !isNaN(endValue)) {
                             const loopBodyLines = lines.slice(i + 1, endforIndex);
                             for (let k = startValue; k <= endValue; k++) {
@@ -521,7 +520,7 @@
                     const result = evaluateLine(line, i);
                     
                     if (isCleanView) {
-                        if (isHiddenBlockActive) continue; // MODIFIED: If in hidden block, skip all output for this line
+                        if (isHiddenBlockActive) continue;
 
                         const commentIndex = line.indexOf('//');
                         const codePart = (commentIndex !== -1) ? line.substring(0, commentIndex) : line;
@@ -549,7 +548,7 @@
                             lineHTML = `<div class="h-6 output-line" data-line-id="${i}"></div>`;
                         }
                         outputHTML += lineHTML;
-                    } else { // Detailed View
+                    } else {
                         if (!trimmedLine) { outputHTML += `<div class="h-6 output-line" data-line-id="${i}"></div>`; } 
                         else {
                             const highlightedLine = highlightText(line, lineVars);
@@ -583,7 +582,23 @@
 
         function closeAutocomplete() { autocompleteState.active = false; autocompletePopup.classList.add('hidden'); }
         function handleAutocomplete() { const text = inputArea.value; const cursorPos = inputArea.selectionStart; const textBeforeCursor = text.substring(0, cursorPos); if (/\s$/.test(textBeforeCursor) || textBeforeCursor.length === 0) return closeAutocomplete(); const wordMatch = textBeforeCursor.match(/(\w+)$/); if (!wordMatch) return closeAutocomplete(); autocompleteState.currentWord = wordMatch[1]; const lowerCurrentWord = autocompleteState.currentWord.toLowerCase(); autocompleteState.wordStartIndex = cursorPos - autocompleteState.currentWord.length; const suggestions = getAutocompleteKeywords(text).filter(kw => kw.toLowerCase().startsWith(lowerCurrentWord) && kw.toLowerCase() !== lowerCurrentWord); if (suggestions.length > 0) { autocompleteState.active = true; autocompleteState.suggestions = suggestions; autocompleteState.selectedIndex = 0; } else { closeAutocomplete(); } updateAutocompletePopup(); }
-        function acceptSuggestion(suggestion) { const { value, selectionStart } = inputArea; const { wordStartIndex } = autocompleteState; const textBefore = value.substring(0, wordStartIndex); const textAfter = value.substring(selectionStart); const newText = `${textBefore}${suggestion} ${textAfter}`; inputArea.value = newText; const newCursorPos = wordStartIndex + suggestion.length + 1; inputArea.selectionStart = newCursorPos; inputArea.selectionEnd = newCursorPos; closeAutocomplete(); inputArea.focus(); inputArea.dispatchEvent(new Event('input', { bubbles: true })); }
+        
+        function acceptSuggestion(suggestion) {
+            const { value, selectionStart } = inputArea;
+            const { wordStartIndex } = autocompleteState;
+            const textBefore = value.substring(0, wordStartIndex);
+            const textAfter = value.substring(selectionStart);
+            // MODIFIED: Removed the space from the end of the suggestion
+            const newText = `${textBefore}${suggestion}${textAfter}`;
+            inputArea.value = newText;
+            // MODIFIED: Adjusted the cursor position to be at the end of the word
+            const newCursorPos = wordStartIndex + suggestion.length;
+            inputArea.selectionStart = newCursorPos;
+            inputArea.selectionEnd = newCursorPos;
+            closeAutocomplete();
+            inputArea.focus();
+            inputArea.dispatchEvent(new Event('input', { bubbles: true }));
+        }
         
         // --- Event Listeners ---
         inputArea.addEventListener('input', () => { processAndHighlight(); handleAutocomplete(); });

@@ -282,7 +282,7 @@
         let wakeLock = null;
         let autocompleteState = { active: false, suggestions: [], selectedIndex: -1, wordStartIndex: -1, currentWord: '' };
         
-        const HELP_CONTENT_INPUT = `// Example with a loop\ntotal_sum = 0\nfor i = 1 to 3\n  total_sum = total_sum + i // running total\nendfor\n\n// Final result is above.\nfinal_value = total_sum ^ 2`;
+        const HELP_CONTENT_INPUT = `// Example with a loop and dynamic comment\ntotal_sum = 0\nfor i = 1 to 3\n  total_sum = total_sum + i // running total is {total_sum}\nendfor\n\n// Final result is {total_sum}.\nfinal_value = total_sum ^ 2`;
         
         const HELP_CONTENT_POPUP_HTML = `
             <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and special commands. Type in the Input panel and see your results appear instantly on the right.</p>
@@ -292,8 +292,8 @@
             <code>(100 - 25) * 2^3</code>
             <p><strong>Variables:</strong> Create variables to store numbers and use them in later calculations. Names are <strong>not case-sensitive</strong> (so <code>rent</code> and <code>Rent</code> are the same variable).</p>
             <code>rent = 1200\nutilities = 250\ntotal_cost = Rent + utilities</code>
-            <p><strong>Comments:</strong> Use <code>//</code> to add notes. Anything after <code>//</code> on a line is ignored by the calculator, but is useful for documentation.</p>
-            <code>income = 5000 // Gross monthly salary</code>
+            <p><strong>Comments:</strong> Use <code>//</code> to add notes. Anything after <code>//</code> on a line is ignored by the calculator. In "Clean View", you can display the value of a variable directly in your comment by wrapping its name in curly braces <code>{}</code>.</p>
+            <code>income = 5000 // Gross monthly salary\nsavings_rate = 0.2\nsavings = income * savings_rate // My savings will be {savings}</code>
 
             <h5>Advanced Features</h5>
             <p><strong>Percentages:</strong> Easily add, subtract, or find a percentage of a number.</p>
@@ -324,7 +324,7 @@
             </ul>
 
             <h5>Result Panel Toggles</h5>
-            <p><strong>Clean view:</strong> Hides the step-by-step calculations and shows a clean, simple summary of your results.</p>
+            <p><strong>Clean view:</strong> Hides the step-by-step calculations and shows a clean, simple summary of your results. It also enables dynamic comments where <code>{variable}</code> is replaced by its value.</p>
             <p><strong>No sleep:</strong> Prevents your device's screen from turning off automatically. Useful for long calculations or presentations.</p>
             <p><strong>Round:</strong> Formats all decimal results to two decimal places for cleaner financial or scientific readouts.</p>
         `;
@@ -346,9 +346,19 @@
         const setDefaultCalculationName = () => { const today = new Date(); const mm = String(today.getMonth() + 1).padStart(2, '0'); const dd = String(today.getDate()).padStart(2, '0'); const yy = today.getFullYear().toString().slice(-2); calculationNameInput.value = `Insta-Clone ${mm}-${dd}-${yy}`; };
         const showMessage = (text) => { $('#message-text').textContent = text; messageBox.classList.remove('hidden'); setTimeout(() => messageBox.classList.remove('opacity-0'), 10); setTimeout(() => { messageBox.classList.add('opacity-0'); setTimeout(() => messageBox.classList.add('hidden'), 3000); }, 3000); };
         
-        // FIXED: Replaced reliance on browser auto-scroll with a more robust manual scroll calculation.
+        // ADDED: New function to interpolate variables into comment strings.
+        const interpolateComment = (comment, vars) => {
+            if (!comment) return comment;
+            return comment.replace(/{([a-zA-Z_]\w*)}/g, (match, varName) => {
+                const lowerVarName = varName.toLowerCase();
+                if (vars.hasOwnProperty(lowerVarName)) {
+                    return formatResult(vars[lowerVarName]);
+                }
+                return match; // If variable not found, return the original placeholder {var}
+            });
+        };
+
         const scrollToLine = (lineIndex) => {
-            // First, set the cursor position.
             const lines = inputArea.value.split('\n');
             if (lineIndex < 0 || lineIndex >= lines.length) return;
             let charIndex = 0;
@@ -358,11 +368,8 @@
             inputArea.focus();
             inputArea.setSelectionRange(charIndex, charIndex);
 
-            // Second, manually calculate and set the scroll position.
             const targetLineDiv = $(`#highlightingArea [data-line-id="${lineIndex}"]`);
             if (targetLineDiv) {
-                // Use the highlighter div's position to scroll the actual textarea.
-                // 'auto' behavior is instant, which is better than 'smooth' here.
                 inputArea.scrollTo({ top: targetLineDiv.offsetTop, behavior: 'auto' });
             }
         };
@@ -449,7 +456,8 @@
                     if (endforIndex === -1) { if (!isCleanView) { outputHTML += `<div class="text-red-400 output-line" data-line-id="${i}">Error: Missing 'endfor'.</div>`; } continue; }
 
                     const [, iterator, startExpr, endExpr] = forLoopMatch; const iteratorLower = iterator.toLowerCase();
-                    const startValue = Math.round(calculate(replaceVariables(startExpr.trim()))); const endValue = Math.round(calculate(replaceVariables(endExpr.trim())));
+                    const startValue = Math.round(calculate(replaceVariables(startExpr.trim())));
+                    const endValue = Math.round(calculate(replaceVariables(endExpr.trim())));
                     
                     if (!isCleanView) {
                         loopIdCounter++; const loopBodyId = `loop-body-${loopIdCounter}`;
@@ -495,7 +503,9 @@
                         const commentIndex = line.indexOf('//');
                         const codePart = (commentIndex !== -1) ? line.substring(0, commentIndex) : line;
                         const trimmedCode = codePart.trim();
-                        const commentText = (commentIndex !== -1) ? line.substring(commentIndex + 2).trim() : null;
+                        // MODIFIED: Interpolate variables into the comment text before displaying it.
+                        const rawCommentText = (commentIndex !== -1) ? line.substring(commentIndex + 2).trim() : null;
+                        const commentText = interpolateComment(rawCommentText, variables);
                         const assignmentMatch = trimmedCode.match(/^([a-zA-Z_]\w*)\s*=\s*(.*)$/);
 
                         let lineHTML = '';

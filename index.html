@@ -324,7 +324,7 @@
             <p><strong>Quick Save & Load:</strong> Use the "Save 1/2/3" and "Load 1/2/3" buttons for quick access to your calculations, stored in your browser.</p>
             <p><strong>Save & Load File:</strong> Use "Save to File" to download your work as a <code>.txt</code> file. Use "Load from File" to open it later.</p>
             <p><strong>Share:</strong> Click "Share" to copy a unique link to your clipboard. Anyone with the link will see your exact calculation.</p>
-            <p><strong>Variables Panel:</strong> Click the "Variables" button to open a summary of every variable. <strong>You can click the pencil icon next to any variable to rename it everywhere it is used.</strong></p>
+            <p><strong>Variables Panel:</strong> Click the "Variables" button to open a summary of every variable. <strong>You can click the pencil icon next to any variable to rename it everywhere it is used in your calculations, including dynamic comments like {variable}.</strong></p>
 
             <h5>Interface Tips & Tricks</h5>
             <p><strong>Autocomplete:</strong> Start typing a variable name or a keyword (like <code>for</code> or <code>usd</code>). A suggestion box will appear. Press <strong>Tab</strong> or <strong>Enter</strong> to accept a suggestion.</p>
@@ -649,6 +649,7 @@
         // --- Variables Modal Logic ---
         const isValidVariableName = (name) => /^[a-zA-Z_]\w*$/.test(name) && !specialWords.hasOwnProperty(name.toLowerCase());
 
+        // MODIFIED: This function now correctly renames variables in code AND in {variable} comments.
         const renameVariableInCode = (oldName, newName) => {
             const lowerNewName = newName.toLowerCase();
             const lowerOldName = oldName.toLowerCase();
@@ -660,12 +661,32 @@
             if (lowerNewName === lowerOldName) return;
 
             const performRename = () => {
-                const regex = new RegExp(`\\b${oldName}\\b`, 'gi');
-                inputArea.value = inputArea.value.replace(regex, newName);
+                const codeRegex = new RegExp(`\\b${oldName}\\b`, 'gi');
+                const commentRegex = new RegExp(`\\{${oldName}\\}`, 'gi'); // Regex for {variable}
+                
+                const lines = inputArea.value.split('\n');
+                const newLines = lines.map(line => {
+                    const commentIndex = line.indexOf('//');
+                    if (commentIndex === -1) {
+                        return line.replace(codeRegex, newName);
+                    } else {
+                        const codePart = line.substring(0, commentIndex);
+                        const commentPart = line.substring(commentIndex);
+                        
+                        const updatedCodePart = codePart.replace(codeRegex, newName);
+                        const updatedCommentPart = commentPart.replace(commentRegex, `{${newName}}`);
+                        
+                        return updatedCodePart + updatedCommentPart;
+                    }
+                });
+
+                inputArea.value = newLines.join('\n');
                 processAndHighlight();
                 populateVariablesModal();
                 showMessage(`Renamed "${oldName}" to "${newName}".`);
-                confirmModal.classList.add('hidden');
+                if (confirmModal.classList.contains('flex')) {
+                    confirmModal.classList.add('hidden');
+                }
             };
 
             if (variables.hasOwnProperty(lowerNewName)) {
@@ -724,7 +745,12 @@
                 const oldName = renameBtn.dataset.varName;
                 const nameCell = renameBtn.previousElementSibling;
 
-                if (nameCell.querySelector('input')) return; // Already in edit mode
+                if (nameCell.querySelector('input')) return;
+
+                document.querySelectorAll('.variable-rename-input').forEach(inp => {
+                    const originalName = inp.parentElement.parentElement.dataset.varName;
+                    inp.parentElement.innerHTML = originalName;
+                });
 
                 nameCell.innerHTML = `<input type="text" class="variable-rename-input" value="${oldName}" />`;
                 const input = nameCell.querySelector('input');
@@ -733,28 +759,35 @@
 
                 const handleFinish = (shouldRename) => {
                     const newName = input.value.trim();
-                    if (shouldRename) {
+                    if (shouldRename && newName) {
                         renameVariableInCode(oldName, newName);
                     } else {
-                        nameCell.innerHTML = oldName; // Revert on cancel
+                        populateVariablesModal();
                     }
                 };
 
                 input.addEventListener('keydown', (ev) => {
                     if (ev.key === 'Enter') {
                         ev.preventDefault();
+                        input.blur();
                         handleFinish(true);
                     } else if (ev.key === 'Escape') {
                         handleFinish(false);
                     }
                 });
-                input.addEventListener('blur', () => { handleFinish(false); }, { once: true });
+                input.addEventListener('blur', () => {
+                    setTimeout(() => {
+                        if (document.body.contains(input)) {
+                             handleFinish(false);
+                        }
+                    }, 100);
+                }, { once: true });
 
                 return;
             }
 
             const row = e.target.closest('.variable-row');
-            if (row && row.dataset.lineIndex) {
+            if (row && !row.querySelector('input')) {
                 const lineIndex = parseInt(row.dataset.lineIndex, 10);
                 variablesModal.classList.add('hidden');
                 variablesModal.classList.remove('flex');

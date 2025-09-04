@@ -131,6 +131,16 @@
         .variable-row:hover {
             background-color: rgba(75, 85, 99, 0.5); /* Same as line-highlight */
         }
+        .rename-btn {
+            background: none; border: none; cursor: pointer; padding: 0.25rem; margin-left: 0.5rem;
+            color: #9ca3af;
+        }
+        .rename-btn:hover { color: #e5e7eb; }
+        .variable-name-cell input {
+            background-color: #374151; color: #e5e7eb; border: 1px solid #4f46e5;
+            border-radius: 0.25rem; padding: 0 0.25rem; width: 100%; font: inherit;
+        }
+
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
@@ -218,8 +228,8 @@
     <!-- Modals -->
     <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
         <div class="bg-gray-800 rounded-xl p-6 w-full max-w-sm shadow-2xl border border-gray-700">
-            <h4 class="text-xl font-bold mb-4">Overwrite Calculation?</h4>
-            <p class="text-gray-400 mb-6">This slot already has a saved calculation. Do you want to replace it?</p>
+            <h4 id="confirm-title" class="text-xl font-bold mb-4">Overwrite Calculation?</h4>
+            <p id="confirm-text" class="text-gray-400 mb-6">This slot already has a saved calculation. Do you want to replace it?</p>
             <div class="flex justify-end gap-4">
                 <button id="confirm-cancel" class="bg-gray-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-gray-700">Cancel</button>
                 <button id="confirm-ok" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-700">Overwrite</button>
@@ -314,7 +324,7 @@
             <p><strong>Quick Save & Load:</strong> Use the "Save 1/2/3" and "Load 1/2/3" buttons for quick access to your calculations, stored in your browser.</p>
             <p><strong>Save & Load File:</strong> Use "Save to File" to download your work as a <code>.txt</code> file. Use "Load from File" to open it later.</p>
             <p><strong>Share:</strong> Click "Share" to copy a unique link to your clipboard. Anyone with the link will see your exact calculation.</p>
-            <p><strong>Variables Panel:</strong> Click the "Variables" button to open a summary of every variable in your calculation. It shows their final values and any comments you added. <strong>You can click on any variable in this list to instantly jump to its last definition in the Input panel!</strong></p>
+            <p><strong>Variables Panel:</strong> Click the "Variables" button to open a summary of every variable. <strong>You can click the pencil icon next to any variable to rename it everywhere it is used.</strong></p>
 
             <h5>Interface Tips & Tricks</h5>
             <p><strong>Autocomplete:</strong> Start typing a variable name or a keyword (like <code>for</code> or <code>usd</code>). A suggestion box will appear. Press <strong>Tab</strong> or <strong>Enter</strong> to accept a suggestion.</p>
@@ -588,10 +598,8 @@
             const { wordStartIndex } = autocompleteState;
             const textBefore = value.substring(0, wordStartIndex);
             const textAfter = value.substring(selectionStart);
-            // MODIFIED: Removed the space from the end of the suggestion
             const newText = `${textBefore}${suggestion}${textAfter}`;
             inputArea.value = newText;
-            // MODIFIED: Adjusted the cursor position to be at the end of the word
             const newCursorPos = wordStartIndex + suggestion.length;
             inputArea.selectionStart = newCursorPos;
             inputArea.selectionEnd = newCursorPos;
@@ -628,7 +636,7 @@
         toggleControlsButton.addEventListener('click', () => { controlsPanel.classList.toggle('hidden'); });
 
         // --- Save/Load and other features ---
-        for (let i = 1; i <= 3; i++) { $(`#save-${i}`).addEventListener('click', () => { const key = `instacalc_slot_${i}`; const data = { name: calculationNameInput.value, content: inputArea.value }; if (localStorage.getItem(key)) { confirmModal.classList.add('flex'); confirmModal.classList.remove('hidden'); $('#confirm-ok').onclick = () => { localStorage.setItem(key, JSON.stringify(data)); confirmModal.classList.add('hidden'); showMessage(`Saved to slot ${i}!`); }; $('#confirm-cancel').onclick = () => confirmModal.classList.add('hidden'); } else { localStorage.setItem(key, JSON.stringify(data)); showMessage(`Saved to slot ${i}!`); } }); $(`#load-${i}`).addEventListener('click', () => { const saved = localStorage.getItem(`instacalc_slot_${i}`); if (saved) { try { const data = JSON.parse(saved); calculationNameInput.value = data.name || 'Insta-Clone'; inputArea.value = data.content || ''; } catch (e) { inputArea.value = saved; setDefaultCalculationName(); } processAndHighlight(); showMessage(`Loaded from slot ${i}!`); } else { showMessage(`Slot ${i} is empty.`); } }); }
+        for (let i = 1; i <= 3; i++) { $(`#save-${i}`).addEventListener('click', () => { const key = `instacalc_slot_${i}`; const data = { name: calculationNameInput.value, content: inputArea.value }; if (localStorage.getItem(key)) { $('#confirm-title').textContent = 'Overwrite Calculation?'; $('#confirm-text').textContent = 'This slot already has a saved calculation. Do you want to replace it?'; $('#confirm-ok').className = 'bg-red-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-700'; confirmModal.classList.add('flex'); confirmModal.classList.remove('hidden'); $('#confirm-ok').onclick = () => { localStorage.setItem(key, JSON.stringify(data)); confirmModal.classList.add('hidden'); showMessage(`Saved to slot ${i}!`); }; $('#confirm-cancel').onclick = () => confirmModal.classList.add('hidden'); } else { localStorage.setItem(key, JSON.stringify(data)); showMessage(`Saved to slot ${i}!`); } }); $(`#load-${i}`).addEventListener('click', () => { const saved = localStorage.getItem(`instacalc_slot_${i}`); if (saved) { try { const data = JSON.parse(saved); calculationNameInput.value = data.name || 'Insta-Clone'; inputArea.value = data.content || ''; } catch (e) { inputArea.value = saved; setDefaultCalculationName(); } processAndHighlight(); showMessage(`Loaded from slot ${i}!`); } else { showMessage(`Slot ${i} is empty.`); } }); }
         saveToFileButton.addEventListener('click', () => { const data = { name: calculationNameInput.value, content: inputArea.value }; if (!data.content.trim()) { showMessage('Nothing to save!'); return; } const sanitized = (calculationNameInput.value.trim() || 'Calculation').replace(/[\/\\?%*:|"<>]/g, '').replace(/\s+/g, '_'); const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `IC_${sanitized}.txt`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href); showMessage('File download started!'); });
         loadFromFileButton.addEventListener('click', () => { fileLoaderInput.click(); });
         fileLoaderInput.addEventListener('change', (event) => { if (!event.target.files.length) return; const file = event.target.files[0]; const reader = new FileReader(); reader.onload = (e) => { const content = e.target.result; try { const data = JSON.parse(content); if (data?.content !== undefined) { calculationNameInput.value = data.name || 'Insta-Clone'; inputArea.value = data.content; } else { throw new Error("Not our format"); } } catch (err) { inputArea.value = content; calculationNameInput.value = file.name.replace(/\.[^/.]+$/, ""); } processAndHighlight(); showMessage(`File "${file.name}" loaded!`); }; reader.onerror = () => showMessage(`Error reading file.`); reader.readAsText(file); event.target.value = null; });
@@ -639,18 +647,58 @@
         helpCloseButton.addEventListener('click', () => { helpModal.classList.add('hidden'); helpModal.classList.remove('flex'); });
 
         // --- Variables Modal Logic ---
+        const isValidVariableName = (name) => /^[a-zA-Z_]\w*$/.test(name) && !specialWords.hasOwnProperty(name.toLowerCase());
+
+        const renameVariableInCode = (oldName, newName) => {
+            const lowerNewName = newName.toLowerCase();
+            const lowerOldName = oldName.toLowerCase();
+
+            if (!isValidVariableName(newName)) {
+                showMessage(`"${newName}" is not a valid variable name.`);
+                return;
+            }
+            if (lowerNewName === lowerOldName) return;
+
+            const performRename = () => {
+                const regex = new RegExp(`\\b${oldName}\\b`, 'gi');
+                inputArea.value = inputArea.value.replace(regex, newName);
+                processAndHighlight();
+                populateVariablesModal();
+                showMessage(`Renamed "${oldName}" to "${newName}".`);
+                confirmModal.classList.add('hidden');
+            };
+
+            if (variables.hasOwnProperty(lowerNewName)) {
+                $('#confirm-title').textContent = 'Merge Variables?';
+                $('#confirm-text').textContent = `A variable named "${newName}" already exists. Do you want to merge these? This cannot be undone.`;
+                $('#confirm-ok').className = 'bg-yellow-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-yellow-700';
+                confirmModal.classList.add('flex');
+                confirmModal.classList.remove('hidden');
+                $('#confirm-ok').onclick = performRename;
+                $('#confirm-cancel').onclick = () => {
+                    confirmModal.classList.add('hidden');
+                    populateVariablesModal(); // Refresh to cancel the input field
+                };
+            } else {
+                performRename();
+            }
+        };
+
         const populateVariablesModal = () => {
             if (orderedVariables.size === 0) {
                 variablesContent.innerHTML = `<div class="text-gray-400">No variables have been defined yet.</div>`;
                 return;
             }
-            let contentHTML = '<div class="grid grid-cols-[1fr,1fr,2fr] gap-x-4 items-center border-b border-gray-600 pb-2 mb-2 text-sm text-gray-400"><h5>Variable</h5><h5 class="text-center">Final Value</h5><h5 class="text-right">Comment</h5></div>';
+            let contentHTML = '<div class="grid grid-cols-[1fr,auto,1fr,2fr] gap-x-4 items-center border-b border-gray-600 pb-2 mb-2 text-sm text-gray-400"><h5>Variable</h5><div></div><h5 class="text-center">Final Value</h5><h5 class="text-right">Comment</h5></div>';
             for (const [name, data] of orderedVariables.entries()) {
                 const formattedValue = formatResult(data.value);
                 const commentText = data.comment ? `// ${data.comment}` : '';
                 contentHTML += `
-                    <div class="variable-row grid grid-cols-[1fr,1fr,2fr] gap-x-4 items-start py-1 border-b border-gray-700/50" data-line-index="${data.line}">
-                        <span class="variable-new font-bold break-all">${name}</span>
+                    <div class="variable-row grid grid-cols-[1fr,auto,1fr,2fr] gap-x-4 items-start py-1 border-b border-gray-700/50" data-line-index="${data.line}" data-var-name="${name}">
+                        <span class="variable-name-cell variable-new font-bold break-all flex items-center">${name}</span>
+                        <button class="rename-btn" data-var-name="${name}" title="Rename variable">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg>
+                        </button>
                         <span class="text-center text-green-400 break-all">${formattedValue}</span>
                         <span class="text-right text-yellow-400 italic text-sm break-all">${commentText}</span>
                     </div>
@@ -670,6 +718,41 @@
         });
 
         variablesContent.addEventListener('click', (e) => {
+            const renameBtn = e.target.closest('.rename-btn');
+            if (renameBtn) {
+                e.stopPropagation();
+                const oldName = renameBtn.dataset.varName;
+                const nameCell = renameBtn.previousElementSibling;
+
+                if (nameCell.querySelector('input')) return; // Already in edit mode
+
+                nameCell.innerHTML = `<input type="text" class="variable-rename-input" value="${oldName}" />`;
+                const input = nameCell.querySelector('input');
+                input.focus();
+                input.select();
+
+                const handleFinish = (shouldRename) => {
+                    const newName = input.value.trim();
+                    if (shouldRename) {
+                        renameVariableInCode(oldName, newName);
+                    } else {
+                        nameCell.innerHTML = oldName; // Revert on cancel
+                    }
+                };
+
+                input.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter') {
+                        ev.preventDefault();
+                        handleFinish(true);
+                    } else if (ev.key === 'Escape') {
+                        handleFinish(false);
+                    }
+                });
+                input.addEventListener('blur', () => { handleFinish(false); }, { once: true });
+
+                return;
+            }
+
             const row = e.target.closest('.variable-row');
             if (row && row.dataset.lineIndex) {
                 const lineIndex = parseInt(row.dataset.lineIndex, 10);

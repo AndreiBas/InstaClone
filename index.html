@@ -57,8 +57,13 @@
         .toggle-icon.expanded { transform: rotate(90deg); }
         
         /* Help & Variables */
-        #help-content h5, #variables-content h5 { font-size: 1.125rem; font-weight: 600; color: #c084fc; margin-top: 1.25rem; margin-bottom: 0.75rem; border-bottom: 1px solid #4b5563; padding-bottom: 0.25rem; }
-        #help-content code { display: block; background-color: #111827; padding: 0.75rem; border-radius: 0.375rem; margin-top: 0.5rem; white-space: pre-wrap; font-family: 'Courier New', Courier, monospace; color: #9ca3af; }
+        #help-content h5, #variables-content h5 { font-size: 1.125rem; font-weight: 600; color: #c084fc; margin-top: 1.5rem; margin-bottom: 0.75rem; border-bottom: 1px solid #4b5563; padding-bottom: 0.25rem; }
+        #help-content h5:first-child { margin-top: 0; }
+        #help-content code { display: block; background-color: #111827; padding: 0.75rem; border-radius: 0.375rem; margin-top: 0.5rem; white-space: pre-wrap; font-family: 'Courier New', Courier, monospace; color: #9ca3af; border: 1px solid #374151; }
+        #help-content p { margin-bottom: 0.5rem; line-height: 1.6; }
+        #help-content ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 1rem; color: #d1d5db; }
+        #help-content li { margin-bottom: 0.25rem; }
+        #help-content strong { color: #e5e7eb; }
         
         /* Interactive Lines */
         .line-highlight { background-color: rgba(75, 85, 99, 0.5); transition: background-color 0.1s ease-in-out; }
@@ -110,7 +115,7 @@
 
     <!-- Controls Panel -->
     <div id="controls-panel" class="w-full max-w-screen-2xl mt-4 p-4 md:p-6 bg-gray-800 rounded-2xl shadow-2xl hidden md:block">
-        <div class="flex justify-between items-center mb-2">
+        <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold text-white flex items-center gap-2">
                 Global Cloud Slots (Supabase)
                 <span id="cloud-status-badge" class="text-xs font-normal text-gray-400 border border-gray-500 px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -119,16 +124,60 @@
                 </span>
             </h3>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button id="save-1" class="bg-gray-700 text-gray-300 font-medium py-2 px-4 rounded-lg shadow-md hover:bg-gray-600 border border-gray-600 border-dashed">Slot 1 (Locked)</button>
-            <button id="save-2" class="bg-gray-700 text-gray-300 font-medium py-2 px-4 rounded-lg shadow-md hover:bg-gray-600 border border-gray-600 border-dashed">Slot 2 (Locked)</button>
-            <button id="save-3" class="bg-gray-700 text-gray-300 font-medium py-2 px-4 rounded-lg shadow-md hover:bg-gray-600 border border-gray-600 border-dashed">Slot 3 (Locked)</button>
+        
+        <!-- Unified Cloud Slots Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
+            <!-- Slots will be generated here using standard HTML structure for readability -->
+            <!-- Slot 1 -->
+            <div class="flex items-stretch bg-gray-700/50 rounded-lg overflow-hidden border border-gray-700 shadow-sm" id="slot-row-1">
+                <button id="save-1" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-r border-gray-600 focus:outline-none" title="Save to Slot 1">SAVE</button>
+                <div class="flex-1 flex items-center justify-center px-2 py-2 overflow-hidden bg-gray-800/50">
+                    <span id="slot-text-1" class="text-gray-500 text-sm font-medium truncate select-none">Locked</span>
+                </div>
+                <button id="load-1" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-l border-gray-600 focus:outline-none" title="Load from Slot 1">LOAD</button>
+            </div>
+            <!-- Slot 2 -->
+            <div class="flex items-stretch bg-gray-700/50 rounded-lg overflow-hidden border border-gray-700 shadow-sm" id="slot-row-2">
+                <button id="save-2" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-r border-gray-600 focus:outline-none" title="Save to Slot 2">SAVE</button>
+                <div class="flex-1 flex items-center justify-center px-2 py-2 overflow-hidden bg-gray-800/50">
+                    <span id="slot-text-2" class="text-gray-500 text-sm font-medium truncate select-none">Locked</span>
+                </div>
+                <button id="load-2" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-l border-gray-600 focus:outline-none" title="Load from Slot 2">LOAD</button>
+            </div>
+            <!-- Slot 3 -->
+            <div class="flex items-stretch bg-gray-700/50 rounded-lg overflow-hidden border border-gray-700 shadow-sm" id="slot-row-3">
+                <button id="save-3" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-r border-gray-600 focus:outline-none" title="Save to Slot 3">SAVE</button>
+                <div class="flex-1 flex items-center justify-center px-2 py-2 overflow-hidden bg-gray-800/50">
+                    <span id="slot-text-3" class="text-gray-500 text-sm font-medium truncate select-none">Locked</span>
+                </div>
+                <button id="load-3" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-l border-gray-600 focus:outline-none" title="Load from Slot 3">LOAD</button>
+            </div>
+            <!-- Slot 4 -->
+            <div class="flex items-stretch bg-gray-700/50 rounded-lg overflow-hidden border border-gray-700 shadow-sm" id="slot-row-4">
+                <button id="save-4" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-r border-gray-600 focus:outline-none" title="Save to Slot 4">SAVE</button>
+                <div class="flex-1 flex items-center justify-center px-2 py-2 overflow-hidden bg-gray-800/50">
+                    <span id="slot-text-4" class="text-gray-500 text-sm font-medium truncate select-none">Locked</span>
+                </div>
+                <button id="load-4" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-l border-gray-600 focus:outline-none" title="Load from Slot 4">LOAD</button>
+            </div>
+            <!-- Slot 5 -->
+            <div class="flex items-stretch bg-gray-700/50 rounded-lg overflow-hidden border border-gray-700 shadow-sm" id="slot-row-5">
+                <button id="save-5" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-r border-gray-600 focus:outline-none" title="Save to Slot 5">SAVE</button>
+                <div class="flex-1 flex items-center justify-center px-2 py-2 overflow-hidden bg-gray-800/50">
+                    <span id="slot-text-5" class="text-gray-500 text-sm font-medium truncate select-none">Locked</span>
+                </div>
+                <button id="load-5" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-l border-gray-600 focus:outline-none" title="Load from Slot 5">LOAD</button>
+            </div>
+            <!-- Slot 6 -->
+            <div class="flex items-stretch bg-gray-700/50 rounded-lg overflow-hidden border border-gray-700 shadow-sm" id="slot-row-6">
+                <button id="save-6" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-r border-gray-600 focus:outline-none" title="Save to Slot 6">SAVE</button>
+                <div class="flex-1 flex items-center justify-center px-2 py-2 overflow-hidden bg-gray-800/50">
+                    <span id="slot-text-6" class="text-gray-500 text-sm font-medium truncate select-none">Locked</span>
+                </div>
+                <button id="load-6" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-l border-gray-600 focus:outline-none" title="Load from Slot 6">LOAD</button>
+            </div>
         </div>
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
-            <button id="load-1" class="bg-gray-700 text-gray-300 font-medium py-2 px-4 rounded-lg shadow-md hover:bg-gray-600 border border-gray-600 border-dashed">Load 1 (Locked)</button>
-            <button id="load-2" class="bg-gray-700 text-gray-300 font-medium py-2 px-4 rounded-lg shadow-md hover:bg-gray-600 border border-gray-600 border-dashed">Load 2 (Locked)</button>
-            <button id="load-3" class="bg-gray-700 text-gray-300 font-medium py-2 px-4 rounded-lg shadow-md hover:bg-gray-600 border border-gray-600 border-dashed">Load 3 (Locked)</button>
-        </div>
+        
         <div class="mt-4 flex flex-wrap justify-center gap-2">
             <button id="saveToFileButton" class="bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 flex-grow sm:flex-grow-0">Save to File</button>
             <button id="loadFromFileButton" class="bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 flex-grow sm:flex-grow-0">Load from File</button>
@@ -174,8 +223,8 @@
     
     <!-- Help Modal -->
     <div id="help-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
-        <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-2xl border border-gray-700 flex flex-col max-h-[80vh]">
-            <h4 class="text-2xl font-bold mb-4 text-white">Insta-Clone Help</h4>
+        <div class="bg-gray-800 rounded-xl p-6 w-full max-w-3xl shadow-2xl border border-gray-700 flex flex-col max-h-[90vh]">
+            <h4 class="text-2xl font-bold mb-4 text-white">Calculator Guide</h4>
             <div id="help-content" class="flex-1 overflow-y-auto text-gray-300 space-y-4 pr-4"></div>
             <div class="flex justify-end mt-6"><button id="help-close-button" class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-purple-700">Got it!</button></div>
         </div>
@@ -238,24 +287,71 @@
         let orderedVariables = new Map();
         let wakeLock = null;
         let autocompleteState = { active: false, suggestions: [], selectedIndex: -1, wordStartIndex: -1, currentWord: '' };
-        let isCloudUnlocked = false; // State to track authentication
-        let pendingCloudAction = null; // { type: 'save'|'load', slotId: number }
+        let isCloudUnlocked = false; 
+        let pendingCloudAction = null; 
+        let cloudSlotMetadata = {}; 
         
         const HELP_CONTENT_INPUT = `// Example with a loop and dynamic comment\ntotal_sum = 0\nfor i = 1 to 3\n  total_sum = total_sum + i // running total is {total_sum}\nendfor\n\nHiddenBlock\n  // This block is for setup and won't show in Clean View\n  adjustment_factor = 1.1\nHiddenEnd\n\n// Final result is {total_sum}.\nfinal_value = total_sum ^ 2 * adjustment_factor`;
         
         const HELP_CONTENT_POPUP_HTML = `
-            <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and special commands.</p>
-            <h5>Secure Cloud Saves</h5>
-            <p>Slots 1, 2, and 3 are protected by a master password. Calculations are saved to Supabase only after server-side verification.</p>
-            <h5>Basic Calculations</h5>
-            <p>Math: <code>+ - * / ^ ( )</code></p>
-            <p>Variables: <code>rent = 1200</code> then <code>rent + 50</code></p>
-            <p>Comments: <code>// Note here</code>. Use <code>{variable}</code> in comments.</p>
-            <h5>Advanced</h5>
-            <p>Percentages: <code>100 + 10%</code>, <code>50% of 200</code></p>
-            <p>Conversions: <code>100 usd to eur</code>, <code>5 m to ft</code></p>
-            <p>Dates: <code>today + 5 days</code></p>
-            <p>Loops: <code>for i=1 to 5 ... endfor</code></p>
+            <p>Welcome to Insta-Clone! This is a "literal calculator" that blends a notepad with a spreadsheet. Type your calculations in natural language, define variables, and see results update in real-time.</p>
+            
+            <h5>1. Basic Math & Arithmetic</h5>
+            <p>Use standard operators or parentheses for grouping. The result appears in the right sidebar.</p>
+            <code>2 + 2\n(10 * 5) / 2\n2^3  // Exponent (2 to the power of 3)</code>
+
+            <h5>2. Variables</h5>
+            <p>Assign a value to a word using <code>=</code>. You can use that word in later lines. Variable names are <strong>not case-sensitive</strong> (e.g., 'Rent' and 'rent' are the same).</p>
+            <code>Salary = 5000\nTax = 0.2\nNet_Pay = Salary * (1 - Tax)</code>
+            <p><em>Tip: Click the <strong>Variables</strong> button to see a list of all active variables and rename them globally.</em></p>
+
+            <h5>3. Comments & Clean View</h5>
+            <p>Use <code>//</code> to add notes. If you turn on <strong>Clean View</strong> (toggle at top right), the raw math is hidden, and only your text and results remain.</p>
+            <p>You can embed values into comments using curly braces <code>{}</code>:</p>
+            <code>total = 150 // The final total is {total} dollars.</code>
+
+            <h5>4. Percentages</h5>
+            <p>Easily calculate percentages or add/subtract them.</p>
+            <code>50% of 200      // Result: 100\n100 + 20%       // Result: 120 (Adds 20% of 100)\n500 - 10%       // Result: 450</code>
+
+            <h5>5. Unit & Currency Conversions</h5>
+            <p>Convert between supported units using the <code>to</code> keyword.</p>
+            <code>100 USD to EUR\n50 GBP to USD\n10 m to ft\n100 cm to inch\n5 kg to lb</code>
+
+            <h5>6. Date Math</h5>
+            <p>Calculate future or past dates using <code>today</code>.</p>
+            <code>today + 2 weeks\ntoday - 5 days\ntoday + 1 year</code>
+
+            <h5>7. Math Functions & Constants</h5>
+            <p>Advanced math is supported using standard function names:</p>
+            <ul>
+                <li><strong>Constants:</strong> <code>pi</code> (3.14159...), <code>e</code> (2.718...)</li>
+                <li><strong>Trigonometry:</strong> <code>sin(x)</code>, <code>cos(x)</code>, <code>tan(x)</code> (input in radians)</li>
+                <li><strong>General:</strong> <code>sqrt(x)</code> (Square Root), <code>abs(x)</code> (Absolute Value)</li>
+                <li><strong>Rounding:</strong> <code>round(x)</code>, <code>floor(x)</code>, <code>ceil(x)</code></li>
+            </ul>
+            <code>radius = 5\narea = pi * radius^2\nhypotenuse = sqrt(3^2 + 4^2)</code>
+
+            <h5>8. Automation (Loops)</h5>
+            <p>Run a block of code multiple times. Useful for compound interest or growing lists.</p>
+            <code>total = 0\nfor i = 1 to 5\n  total = total + i\nendfor</code>
+            <p><em>In the Results panel, click the arrow (►) to expand or collapse loop details.</em></p>
+
+            <h5>9. Cloud Saving (Secure)</h5>
+            <p>There are 6 global cloud slots available. These are stored online in a Supabase database.</p>
+            <ul>
+                <li><strong>Security:</strong> Access is protected by a master password.</li>
+                <li><strong>Shared Access:</strong> Anyone with the password and API key can see these slots (useful for teams).</li>
+                <li><strong>Overwrite Protection:</strong> The app will warn you before overwriting an existing save.</li>
+            </ul>
+            
+            <h5>10. Shortcuts</h5>
+            <ul>
+                <li><strong>Erase:</strong> Clears the screen.</li>
+                <li><strong>Share:</strong> Generates a URL to send your calculation to others.</li>
+                <li><strong>No Sleep:</strong> Keeps your screen awake (great for presentations).</li>
+                <li><strong>Click Results:</strong> Clicking a line in the results panel scrolls to that line in the editor.</li>
+            </ul>
         `;
 
         const inchRates = { cm: 2.54, m: 0.0254, ft: 1/12 };
@@ -551,34 +647,72 @@
 
         // --- SECURITY & CLOUD LOGIC ---
 
+        async function fetchCloudSlotMetadata() {
+            const { data, error } = await supabase.from('slots').select('id, name');
+            if (data) {
+                cloudSlotMetadata = {};
+                data.forEach(row => {
+                    cloudSlotMetadata[row.id] = row.name;
+                });
+                updateCloudButtons();
+            }
+        }
+
+        function updateCloudButtons() {
+            for (let i = 1; i <= 6; i++) {
+                const slotTextElement = $(`#slot-text-${i}`);
+                const slotName = cloudSlotMetadata[i];
+
+                if (isCloudUnlocked) {
+                    if (slotName) {
+                        slotTextElement.textContent = slotName;
+                        slotTextElement.classList.replace('text-gray-500', 'text-gray-200');
+                    } else {
+                        slotTextElement.textContent = `Empty`;
+                        slotTextElement.classList.replace('text-gray-200', 'text-gray-500');
+                    }
+                }
+            }
+        }
+
         function unlockCloudUI() {
             isCloudUnlocked = true;
             cloudStatusBadge.innerHTML = `<span class="text-green-400">●</span> Unlocked`;
             cloudStatusBadge.classList.replace('text-gray-400', 'text-green-400');
             cloudStatusBadge.classList.replace('border-gray-500', 'border-green-600');
             
-            // Update button styles
-            for (let i = 1; i <= 3; i++) {
+            for (let i = 1; i <= 6; i++) {
                 const saveBtn = $(`#save-${i}`);
                 const loadBtn = $(`#load-${i}`);
-                saveBtn.classList.replace('bg-gray-700', 'bg-green-700');
-                saveBtn.classList.replace('text-gray-300', 'text-white');
-                saveBtn.classList.replace('hover:bg-gray-600', 'hover:bg-green-800');
-                saveBtn.classList.remove('border', 'border-gray-600', 'border-dashed');
-                saveBtn.textContent = `Save to Cloud Slot ${i}`;
+                const slotRow = $(`#slot-row-${i}`);
+                const slotText = $(`#slot-text-${i}`);
+
+                // Update Row Style
+                slotRow.classList.replace('bg-gray-700/50', 'bg-gray-700');
                 
-                loadBtn.classList.replace('bg-gray-700', 'bg-blue-700');
-                loadBtn.classList.replace('text-gray-300', 'text-white');
-                loadBtn.classList.replace('hover:bg-gray-600', 'hover:bg-blue-800');
-                loadBtn.classList.remove('border', 'border-gray-600', 'border-dashed');
-                loadBtn.textContent = `Load Cloud Slot ${i}`;
+                // Enable Buttons visual state
+                saveBtn.classList.replace('bg-gray-700', 'bg-gray-800');
+                saveBtn.classList.replace('text-gray-400', 'text-gray-300');
+                saveBtn.classList.add('hover:bg-green-700', 'hover:text-white');
+                
+                loadBtn.classList.replace('bg-gray-700', 'bg-gray-800');
+                loadBtn.classList.replace('text-gray-400', 'text-gray-300');
+                loadBtn.classList.add('hover:bg-blue-700', 'hover:text-white');
+
+                // Update text placeholder
+                if (slotText.textContent === "Locked") {
+                     slotText.textContent = "Empty";
+                }
             }
+
+            // Fetch real names from DB
+            fetchCloudSlotMetadata();
 
             passwordModal.classList.add('hidden');
             
             // Resume pending action if any
             if (pendingCloudAction) {
-                if (pendingCloudAction.type === 'save') saveToCloudSlot(pendingCloudAction.slotId);
+                if (pendingCloudAction.type === 'save') initiateSave(pendingCloudAction.slotId);
                 else if (pendingCloudAction.type === 'load') loadFromCloudSlot(pendingCloudAction.slotId);
                 pendingCloudAction = null;
             }
@@ -607,7 +741,7 @@
 
         function requestCloudAccess(type, slotId) {
             if (isCloudUnlocked) {
-                if (type === 'save') saveToCloudSlot(slotId);
+                if (type === 'save') initiateSave(slotId);
                 else loadFromCloudSlot(slotId);
             } else {
                 pendingCloudAction = { type, slotId };
@@ -617,8 +751,36 @@
             }
         }
 
-        // Helper function to handle saving
-        async function saveToCloudSlot(slotId) {
+        // Logic to trigger confirmation modal before saving
+        function initiateSave(slotId) {
+            const currentSlotName = cloudSlotMetadata[slotId];
+            const newName = calculationNameInput.value.trim() || 'Untitled';
+            
+            $('#confirm-title').textContent = 'Confirm Cloud Save';
+            if (currentSlotName) {
+                $('#confirm-text').innerHTML = `Slot ${slotId} currently contains <strong>"${currentSlotName}"</strong>.<br>Do you want to overwrite it with <strong>"${newName}"</strong>?`;
+            } else {
+                $('#confirm-text').innerHTML = `Save <strong>"${newName}"</strong> to Slot ${slotId}?`;
+            }
+            
+            $('#confirm-ok').className = 'bg-green-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-green-700';
+            $('#confirm-ok').textContent = 'Yes, Save';
+            
+            confirmModal.classList.remove('hidden');
+            confirmModal.classList.add('flex');
+            
+            // Override the OK click handler for this specific action
+            $('#confirm-ok').onclick = () => {
+                confirmModal.classList.add('hidden');
+                performCloudSave(slotId);
+            };
+            $('#confirm-cancel').onclick = () => {
+                 confirmModal.classList.add('hidden');
+            };
+        }
+
+        // The actual save function
+        async function performCloudSave(slotId) {
             const content = inputArea.value;
             const name = calculationNameInput.value.trim() || 'Untitled Calculation';
             
@@ -628,11 +790,20 @@
             const { data, error } = await supabase.from('slots').upsert({ id: slotId, name: name, content: content });
 
             if (error) { showMessage(`Error: ${error.message}`); } 
-            else { showMessage(`Saved to Cloud Slot ${slotId}!`); }
+            else { 
+                showMessage(`Saved to Cloud Slot ${slotId}!`);
+                fetchCloudSlotMetadata(); // Refresh button names
+            }
         }
 
         // Helper function to handle loading
         async function loadFromCloudSlot(slotId) {
+            const currentSlotName = cloudSlotMetadata[slotId];
+            if (!currentSlotName && isCloudUnlocked) {
+                showMessage(`Slot ${slotId} is empty.`);
+                return;
+            }
+
             showMessage(`Loading Cloud Slot ${slotId}...`);
             const { data, error } = await supabase.from('slots').select('*').eq('id', slotId).single();
 
@@ -643,12 +814,12 @@
                 inputArea.value = data.content || '';
                 calculationNameInput.value = data.name || 'Untitled';
                 processAndHighlight();
-                showMessage(`Loaded Cloud Slot ${slotId}!`);
+                showMessage(`Loaded "${data.name}"!`);
             }
         }
 
-        // Attach listeners to buttons 1, 2, and 3
-        for (let i = 1; i <= 3; i++) {
+        // Attach listeners to buttons 1 through 6
+        for (let i = 1; i <= 6; i++) {
             $(`#save-${i}`).addEventListener('click', () => requestCloudAccess('save', i));
             $(`#load-${i}`).addEventListener('click', () => requestCloudAccess('load', i));
         }

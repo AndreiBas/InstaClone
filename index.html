@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Insta-Clone Calculator</title>
+    <title>Insta-Clone Calculator (Cloud Edition)</title>
     <!-- Use the Inter font from Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,13 +12,12 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- pako.js for compression/decompression for sharing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+    <!-- Load Supabase JS -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        html, body {
-            overscroll-behavior-y: contain;
-        }
+        body { font-family: 'Inter', sans-serif; }
+        html, body { overscroll-behavior-y: contain; }
 
         /* Custom scrollbar styles */
         ::-webkit-scrollbar { width: 8px; }
@@ -27,69 +26,24 @@
         ::-webkit-scrollbar-thumb:hover { background-color: #6b7280; }
 
         /* Styles for the dual-layer input area */
-        .input-container {
-            position: relative;
-            flex: 1;
-            min-height: 0;
-            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
-            font-size: 1rem; /* text-base */
-            line-height: 1.5;
-        }
-        @media (min-width: 768px) {
-            .input-container { font-size: 1.125rem; } /* md:text-lg */
-        }
+        .input-container { position: relative; flex: 1; min-height: 0; font-family: 'Menlo', 'Monaco', 'Courier New', monospace; font-size: 1rem; line-height: 1.5; }
+        @media (min-width: 768px) { .input-container { font-size: 1.125rem; } }
 
-        #highlightingArea, #inputArea, #autocomplete-mirror {
-            padding: 1rem;
-            margin: 0;
-            border: 0;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            overflow-y: auto;
-            position: absolute;
-            top: 0; right: 0; bottom: 0; left: 0;
-            border-radius: 0.75rem; /* rounded-xl */
-            font: inherit; /* Ensure all layers use the container's font settings */
-        }
-        
-        #highlightingArea {
-            background-color: #111827; /* gray-900 */
-            z-index: 1;
-            pointer-events: none; /* Clicks go through to the input area */
-            color: #d1d5db; /* Default text color */
-        }
-        
-        #highlightingArea > div {
-            min-height: 1.5em; /* Match line-height to prevent collapse of empty lines */
-        }
+        #highlightingArea, #inputArea, #autocomplete-mirror { padding: 1rem; margin: 0; border: 0; white-space: pre-wrap; word-wrap: break-word; overflow-y: auto; position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: 0.75rem; font: inherit; }
+        #highlightingArea { background-color: #111827; z-index: 1; pointer-events: none; color: #d1d5db; }
+        #highlightingArea > div { min-height: 1.5em; }
+        #inputArea { z-index: 2; background-color: transparent; color: transparent; caret-color: #fff; resize: none; outline: none; }
+        #autocomplete-mirror { z-index: -1; visibility: hidden; pointer-events: none; }
 
-        #inputArea {
-            z-index: 2;
-            background-color: transparent;
-            color: transparent; /* Make the actual text invisible */
-            caret-color: #fff; /* But keep the cursor visible */
-            resize: none;
-            outline: none;
-        }
-
-        #autocomplete-mirror {
-            z-index: -1; /* Keep it out of sight and non-interactive */
-            visibility: hidden;
-            pointer-events: none;
-        }
-
-
-        /* Style for the syntax-highlighted spans */
+        /* Syntax Highlighting */
         .variable-new { color: #60a5fa; } .variable-redefined { color: #f87171; } .variable-used { color: #fb923c; } .comment { color: #facc15; } .operator { color: #a1a1aa; } .keyword { color: #c084fc; } .unit { color: #2dd4bf; }
         
-        /* Styles for Autocomplete Popup */
-        #autocomplete-popup {
-            position: absolute; z-index: 100; background-color: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); max-height: 200px; overflow-y: auto; min-width: 150px;
-        }
+        /* Autocomplete Popup */
+        #autocomplete-popup { position: absolute; z-index: 100; background-color: #1f2937; border: 1px solid #374151; border-radius: 0.5rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); max-height: 200px; overflow-y: auto; min-width: 150px; }
         .autocomplete-item { padding: 0.5rem 1rem; cursor: pointer; color: #d1d5db; }
         .autocomplete-item:hover, .autocomplete-item.selected { background-color: #4f46e5; color: white; }
         
-        /* Custom styles for the toggle switch */
+        /* Toggles */
         .toggle-switch-container { display: inline-block; height: 24px; position: relative; width: 48px; }
         .toggle-switch-container input { display: none; }
         .toggle-slider { background-color: #4b5563; bottom: 0; cursor: pointer; left: 0; position: absolute; right: 0; top: 0; transition: .4s; border-radius: 34px; }
@@ -97,63 +51,35 @@
         input:checked + .toggle-slider { background-color: #22c55e; }
         input:checked + .toggle-slider:before { transform: translateX(24px); }
 
-        /* Styles for collapsible loops */
+        /* Loops */
         .loop-header { cursor: pointer; display: flex; align-items: center; }
         .toggle-icon { margin-right: 0.5rem; color: #9ca3af; transition: transform 0.2s; width: 1rem; }
         .toggle-icon.expanded { transform: rotate(90deg); }
         
-        /* Styles for Help & Variables Modal Content */
+        /* Help & Variables */
         #help-content h5, #variables-content h5 { font-size: 1.125rem; font-weight: 600; color: #c084fc; margin-top: 1.25rem; margin-bottom: 0.75rem; border-bottom: 1px solid #4b5563; padding-bottom: 0.25rem; }
         #help-content code { display: block; background-color: #111827; padding: 0.75rem; border-radius: 0.375rem; margin-top: 0.5rem; white-space: pre-wrap; font-family: 'Courier New', Courier, monospace; color: #9ca3af; }
-        #help-content p, #help-content ul { margin-bottom: 0.5rem; }
-        #help-content strong { color: #a5b4fc; font-weight: 500; }
-        #help-content ul { list-style-position: inside; padding-left: 1rem; }
-        #help-content li { margin-bottom: 0.25rem; }
-
-
-        /* Style for line highlighting on hover */
-        .line-highlight {
-            background-color: rgba(75, 85, 99, 0.5); /* gray-600 with 50% opacity */
-            transition: background-color 0.1s ease-in-out;
-        }
-
-        /* Add a cursor pointer to all output lines to indicate they are clickable */
-        .output-line {
-            cursor: pointer;
-        }
-
-        /* Styles for clickable variable rows in the modal */
-        .variable-row {
-            cursor: pointer;
-            border-radius: 0.25rem;
-            transition: background-color 0.2s ease-in-out;
-        }
-        .variable-row:hover {
-            background-color: rgba(75, 85, 99, 0.5); /* Same as line-highlight */
-        }
-        .rename-btn {
-            background: none; border: none; cursor: pointer; padding: 0.25rem; margin-left: 0.5rem;
-            color: #9ca3af;
-        }
+        
+        /* Interactive Lines */
+        .line-highlight { background-color: rgba(75, 85, 99, 0.5); transition: background-color 0.1s ease-in-out; }
+        .output-line { cursor: pointer; }
+        .variable-row { cursor: pointer; border-radius: 0.25rem; transition: background-color 0.2s ease-in-out; }
+        .variable-row:hover { background-color: rgba(75, 85, 99, 0.5); }
+        .rename-btn { background: none; border: none; cursor: pointer; padding: 0.25rem; margin-left: 0.5rem; color: #9ca3af; }
         .rename-btn:hover { color: #e5e7eb; }
-        .variable-name-cell input {
-            background-color: #374151; color: #e5e7eb; border: 1px solid #4f46e5;
-            border-radius: 0.25rem; padding: 0 0.25rem; width: 100%; font: inherit;
-        }
-
+        .variable-name-cell input { background-color: #374151; color: #e5e7eb; border: 1px solid #4f46e5; border-radius: 0.25rem; padding: 0 0.25rem; width: 100%; font: inherit; }
     </style>
 </head>
 <body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
 
-    <!-- Main content area with vertical constraint for desktop -->
+    <!-- Main Content -->
     <div class="w-full max-w-screen-2xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 flex-1 min-h-0 md:max-h-[80vh]">
-        <!-- Input Panel -->
+        <!-- Input -->
         <div class="flex flex-col p-4 md:p-8 min-h-0">
             <div class="flex justify-between items-center mb-2 h-12 gap-2 md:gap-4 flex-shrink-0">
                 <input type="text" id="calculationNameInput" placeholder="Calculation Name..." class="text-xl md:text-2xl font-bold text-white bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-2 py-1 w-full -ml-2">
                 <button id="eraseButton" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg shadow-lg hover:bg-red-700 flex-shrink-0">Erase</button>
             </div>
-            
             <div class="input-container">
                 <div id="highlightingArea" aria-hidden="true"></div>
                 <div id="autocomplete-mirror" aria-hidden="true"></div>
@@ -161,32 +87,14 @@
                 <div id="autocomplete-popup" class="hidden"></div>
             </div>
         </div>
-        <!-- Results Panel -->
+        <!-- Results -->
         <div class="flex flex-col p-4 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30 min-h-0">
             <div class="flex justify-between items-center mb-2 min-h-[3rem] h-auto flex-shrink-0">
                 <h2 class="text-2xl font-bold text-white">Results</h2>
                 <div class="flex items-center justify-end flex-wrap gap-x-4 gap-y-2">
-                    <div class="flex items-center space-x-2">
-                        <label class="text-gray-400 text-sm">Clean view</label>
-                        <label class="toggle-switch-container">
-                            <input type="checkbox" id="cleanViewToggle">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <label class="text-gray-400 text-sm">No sleep</label>
-                        <label class="toggle-switch-container">
-                            <input type="checkbox" id="noSleepToggle">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
-                    <div class="flex items-center space-x-2">
-                        <label class="text-gray-400 text-sm">Round</label>
-                        <label class="toggle-switch-container">
-                            <input type="checkbox" id="roundingToggle">
-                            <span class="toggle-slider"></span>
-                        </label>
-                    </div>
+                    <div class="flex items-center space-x-2"><label class="text-gray-400 text-sm">Clean view</label><label class="toggle-switch-container"><input type="checkbox" id="cleanViewToggle"><span class="toggle-slider"></span></label></div>
+                    <div class="flex items-center space-x-2"><label class="text-gray-400 text-sm">No sleep</label><label class="toggle-switch-container"><input type="checkbox" id="noSleepToggle"><span class="toggle-slider"></span></label></div>
+                    <div class="flex items-center space-x-2"><label class="text-gray-400 text-sm">Round</label><label class="toggle-switch-container"><input type="checkbox" id="roundingToggle"><span class="toggle-slider"></span></label></div>
                 </div>
             </div>
             <div id="outputArea" class="relative flex-1 bg-gray-900 rounded-xl p-4 overflow-y-auto text-gray-200 font-mono text-base md:text-lg">
@@ -195,32 +103,33 @@
         </div>
     </div>
 
-    <!-- Controls Panel Toggle for Mobile -->
+    <!-- Mobile Controls Toggle -->
     <div class="w-full max-w-screen-2xl mt-2 md:hidden">
-        <button id="toggleControlsButton" class="w-full bg-gray-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-gray-600">
-            Manage Saves & Files
-        </button>
+        <button id="toggleControlsButton" class="w-full bg-gray-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-gray-600">Manage Saves & Files</button>
     </div>
 
-    <!-- Main Controls Panel -->
+    <!-- Controls Panel -->
     <div id="controls-panel" class="w-full max-w-screen-2xl mt-4 p-4 md:p-6 bg-gray-800 rounded-2xl shadow-2xl hidden md:block">
-        <h3 class="text-lg font-semibold text-white mb-2">Quick Save Slots</h3>
+        <h3 class="text-lg font-semibold text-white mb-2 flex items-center gap-2">
+            Global Cloud Slots (Supabase)
+            <span class="text-xs font-normal text-green-400 border border-green-600 px-2 py-0.5 rounded-full">Online</span>
+        </h3>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <button id="save-1" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 1</button>
-            <button id="save-2" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 2</button>
-            <button id="save-3" class="bg-green-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-700">Save 3</button>
+            <button id="save-1" class="bg-green-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-800">Save to Cloud Slot 1</button>
+            <button id="save-2" class="bg-green-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-800">Save to Cloud Slot 2</button>
+            <button id="save-3" class="bg-green-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-green-800">Save to Cloud Slot 3</button>
         </div>
         <div class="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2">
-            <button id="load-1" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 1</button>
-            <button id="load-2" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 2</button>
-            <button id="load-3" class="bg-blue-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-700">Load 3</button>
+            <button id="load-1" class="bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-800">Load Cloud Slot 1</button>
+            <button id="load-2" class="bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-800">Load Cloud Slot 2</button>
+            <button id="load-3" class="bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-blue-800">Load Cloud Slot 3</button>
         </div>
         <div class="mt-4 flex flex-wrap justify-center gap-2">
             <button id="saveToFileButton" class="bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 flex-grow sm:flex-grow-0">Save to File</button>
             <button id="loadFromFileButton" class="bg-indigo-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-indigo-700 flex-grow sm:flex-grow-0">Load from File</button>
-            <button id="shareButton" class="bg-teal-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-teal-700 flex-grow sm:flex-grow-0">Share</button>
+            <button id="shareButton" class="bg-teal-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-teal-700 flex-grow sm:flex-grow-0">Share Link</button>
             <button id="variablesButton" class="bg-cyan-600 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-cyan-700 flex-grow sm:flex-grow-0">Variables</button>
-            <button id="helpButton" class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg shadow-md hover:bg-purple-700 flex-grow sm:flex-grow-0">Show Help</button>
+            <button id="helpButton" class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg shadow-md hover:bg-purple-700 flex-grow sm:flex-grow-0">Help</button>
         </div>
         <input type="file" id="fileLoader" class="hidden" accept=".txt,.text/plain,.json">
     </div>
@@ -229,7 +138,7 @@
     <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
         <div class="bg-gray-800 rounded-xl p-6 w-full max-w-sm shadow-2xl border border-gray-700">
             <h4 id="confirm-title" class="text-xl font-bold mb-4">Overwrite Calculation?</h4>
-            <p id="confirm-text" class="text-gray-400 mb-6">This slot already has a saved calculation. Do you want to replace it?</p>
+            <p id="confirm-text" class="text-gray-400 mb-6">Do you want to overwrite this?</p>
             <div class="flex justify-end gap-4">
                 <button id="confirm-cancel" class="bg-gray-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-gray-700">Cancel</button>
                 <button id="confirm-ok" class="bg-red-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-700">Overwrite</button>
@@ -237,26 +146,31 @@
         </div>
     </div>
     <div id="message-box" class="fixed top-4 left-1/2 -translate-x-1/2 p-4 bg-gray-800 text-white rounded-lg shadow-lg z-50 hidden opacity-0 transition-opacity duration-300"><p id="message-text"></p></div>
+    
+    <!-- Help Modal -->
     <div id="help-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
         <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-2xl border border-gray-700 flex flex-col max-h-[80vh]">
             <h4 class="text-2xl font-bold mb-4 text-white">Insta-Clone Help</h4>
             <div id="help-content" class="flex-1 overflow-y-auto text-gray-300 space-y-4 pr-4"></div>
-            <div class="flex justify-end mt-6">
-                <button id="help-close-button" class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-purple-700">Got it!</button>
-            </div>
+            <div class="flex justify-end mt-6"><button id="help-close-button" class="bg-purple-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-purple-700">Got it!</button></div>
         </div>
     </div>
+
+    <!-- Variables Modal -->
     <div id="variables-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
         <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-2xl border border-gray-700 flex flex-col max-h-[80vh]">
             <h4 class="text-2xl font-bold mb-4 text-white">Current Variables</h4>
             <div id="variables-content" class="flex-1 overflow-y-auto text-gray-300 space-y-2 pr-4 font-mono"></div>
-            <div class="flex justify-end mt-6">
-                <button id="variables-close-button" class="bg-cyan-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-cyan-700">Close</button>
-            </div>
+            <div class="flex justify-end mt-6"><button id="variables-close-button" class="bg-cyan-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-cyan-700">Close</button></div>
         </div>
     </div>
 
     <script>
+        // --- Supabase Configuration ---
+        const SUPABASE_URL = 'https://erceyiltzqsshwqdueuh.supabase.co';
+        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVyY2V5aWx0enFzc2h3cWR1ZXVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1MTMwNTQsImV4cCI6MjA4MDA4OTA1NH0.Oy9gppo_HDIBE3u9ugdlR5f71np188KYoSKLihi7wY0';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
         // --- Core Application Logic ---
         
         const $ = (selector) => document.querySelector(selector);
@@ -295,50 +209,18 @@
         const HELP_CONTENT_INPUT = `// Example with a loop and dynamic comment\ntotal_sum = 0\nfor i = 1 to 3\n  total_sum = total_sum + i // running total is {total_sum}\nendfor\n\nHiddenBlock\n  // This block is for setup and won't show in Clean View\n  adjustment_factor = 1.1\nHiddenEnd\n\n// Final result is {total_sum}.\nfinal_value = total_sum ^ 2 * adjustment_factor`;
         
         const HELP_CONTENT_POPUP_HTML = `
-            <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and special commands. Type in the Input panel and see your results appear instantly on the right.</p>
-            
+            <p>Welcome to Insta-Clone! This is a real-time calculator that understands variables, loops, and special commands.</p>
+            <h5>Cloud Saves (Supabase)</h5>
+            <p>Slots 1, 2, and 3 are now <strong>Global</strong>. Any calculation saved there is stored in the Supabase cloud. Anyone using this app with the same API key can read or overwrite them.</p>
             <h5>Basic Calculations</h5>
-            <p><strong>Math Operations:</strong> Use standard operators like <code>+</code>, <code>-</code>, <code>*</code>, <code>/</code>, <code>^</code> (for exponents), and group expressions with parentheses <code>()</code>.</p>
-            <code>(100 - 25) * 2^3</code>
-            <p><strong>Variables:</strong> Create variables to store numbers and use them in later calculations. Names are <strong>not case-sensitive</strong> (so <code>rent</code> and <code>Rent</code> are the same variable).</p>
-            <code>rent = 1200\nutilities = 250\ntotal_cost = Rent + utilities</code>
-            <p><strong>Comments:</strong> Use <code>//</code> to add notes. Anything after <code>//</code> on a line is ignored by the calculator. In "Clean View", you can display the value of a variable directly in your comment by wrapping its name in curly braces <code>{}</code>.</p>
-            <code>income = 5000 // Gross monthly salary\nsavings_rate = 0.2\nsavings = income * savings_rate // My savings will be {savings}</code>
-
-            <h5>Advanced Features</h5>
-            <p><strong>Percentages:</strong> Easily add, subtract, or find a percentage of a number.</p>
-            <code>500 + 10%       // Adds 10% of 500 (result: 550)\n120 - 25%       // Subtracts 25% of 120 (result: 90)\n15% of 300      // Calculates 15% of 300 (result: 45)</code>
-            <p><strong>Date Math:</strong> Use the <code>today</code> keyword to calculate future or past dates.</p>
-            <code>project_due = today + 90 days\nlast_meeting = today - 3 weeks</code>
-            <p><strong>Unit Conversions:</strong> Convert values using the format: <code>value from_unit to to_unit</code>.</p>
-            <code>100 usd to gbp\n2.5 m to ft\n10 cm to inch</code>
-
-            <h5>Automation with Loops</h5>
-            <p><strong>For Loops:</strong> Run a block of code multiple times. Start with <code>for variable = start to end</code> and finish the block with <code>endfor</code>.</p>
-            <code>total = 0\nfor i = 1 to 5\n  total = total + i // This line runs 5 times\nendfor</code>
-
-            <h5>Managing Your Work</h5>
-            <p><strong>Hiding Calculations (Clean View Only):</strong> You can hide intermediate steps or setup calculations from the final summary. Wrap any lines you want to hide between <code>HiddenBlock</code> and <code>HiddenEnd</code>. These calculations will still run and update variables, but they won't appear in the Results panel when 'Clean View' is on.</p>
-            <code>// --- Setup Calculations ---\nHiddenBlock\n  base_rate = 150\n  tax_multiplier = 1.2\nHiddenEnd\n\n// --- Final Result ---\nfinal_price = base_rate * tax_multiplier // The final price is {final_price}</code>
-            <p><strong>Calculation Name:</strong> Edit the name at the top-left. This name is used when saving to a file.</p>
-            <p><strong>Quick Save & Load:</strong> Use the "Save 1/2/3" and "Load 1/2/3" buttons for quick access to your calculations, stored in your browser.</p>
-            <p><strong>Save & Load File:</strong> Use "Save to File" to download your work as a <code>.txt</code> file. Use "Load from File" to open it later.</p>
-            <p><strong>Share:</strong> Click "Share" to copy a unique link to your clipboard. Anyone with the link will see your exact calculation.</p>
-            <p><strong>Variables Panel:</strong> Click the "Variables" button to open a summary of every variable. <strong>You can click the pencil icon next to any variable to rename it everywhere it is used in your calculations, including dynamic comments like {variable}.</strong></p>
-
-            <h5>Interface Tips & Tricks</h5>
-            <p><strong>Autocomplete:</strong> Start typing a variable name or a keyword (like <code>for</code> or <code>usd</code>). A suggestion box will appear. Press <strong>Tab</strong> or <strong>Enter</strong> to accept a suggestion.</p>
-            <p><strong>Interactive Results Panel:</strong></p>
-            <ul>
-                <li><strong>Click to Scroll:</strong> Click on any line in the Results panel to instantly scroll the Input panel to the corresponding line.</li>
-                <li><strong>Line Highlighting:</strong> Hover your mouse over a result to highlight both the result line and the input line that generated it.</li>
-                <li><strong>Collapsible Loops:</strong> In the Results panel, click the '►' icon next to a loop's header to expand or collapse its detailed output.</li>
-            </ul>
-
-            <h5>Result Panel Toggles</h5>
-            <p><strong>Clean view:</strong> Hides the step-by-step calculations and shows a clean, simple summary of your results. It also enables dynamic comments where <code>{variable}</code> is replaced by its value.</p>
-            <p><strong>No sleep:</strong> Prevents your device's screen from turning off automatically. Useful for long calculations or presentations.</p>
-            <p><strong>Round:</strong> Formats all decimal results to two decimal places for cleaner financial or scientific readouts.</p>
+            <p>Math: <code>+ - * / ^ ( )</code></p>
+            <p>Variables: <code>rent = 1200</code> then <code>rent + 50</code></p>
+            <p>Comments: <code>// Note here</code>. Use <code>{variable}</code> in comments.</p>
+            <h5>Advanced</h5>
+            <p>Percentages: <code>100 + 10%</code>, <code>50% of 200</code></p>
+            <p>Conversions: <code>100 usd to eur</code>, <code>5 m to ft</code></p>
+            <p>Dates: <code>today + 5 days</code></p>
+            <p>Loops: <code>for i=1 to 5 ... endfor</code></p>
         `;
 
         const inchRates = { cm: 2.54, m: 0.0254, ft: 1/12 };
@@ -379,11 +261,8 @@
             }
             inputArea.focus();
             inputArea.setSelectionRange(charIndex, charIndex);
-
             const targetLineDiv = $(`#highlightingArea [data-line-id="${lineIndex}"]`);
-            if (targetLineDiv) {
-                inputArea.scrollTo({ top: targetLineDiv.offsetTop, behavior: 'auto' });
-            }
+            if (targetLineDiv) { inputArea.scrollTo({ top: targetLineDiv.offsetTop, behavior: 'auto' }); }
         };
 
         // --- Core Calculation Engine ---
@@ -635,8 +514,66 @@
 
         toggleControlsButton.addEventListener('click', () => { controlsPanel.classList.toggle('hidden'); });
 
-        // --- Save/Load and other features ---
-        for (let i = 1; i <= 3; i++) { $(`#save-${i}`).addEventListener('click', () => { const key = `instacalc_slot_${i}`; const data = { name: calculationNameInput.value, content: inputArea.value }; if (localStorage.getItem(key)) { $('#confirm-title').textContent = 'Overwrite Calculation?'; $('#confirm-text').textContent = 'This slot already has a saved calculation. Do you want to replace it?'; $('#confirm-ok').className = 'bg-red-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-red-700'; confirmModal.classList.add('flex'); confirmModal.classList.remove('hidden'); $('#confirm-ok').onclick = () => { localStorage.setItem(key, JSON.stringify(data)); confirmModal.classList.add('hidden'); showMessage(`Saved to slot ${i}!`); }; $('#confirm-cancel').onclick = () => confirmModal.classList.add('hidden'); } else { localStorage.setItem(key, JSON.stringify(data)); showMessage(`Saved to slot ${i}!`); } }); $(`#load-${i}`).addEventListener('click', () => { const saved = localStorage.getItem(`instacalc_slot_${i}`); if (saved) { try { const data = JSON.parse(saved); calculationNameInput.value = data.name || 'Insta-Clone'; inputArea.value = data.content || ''; } catch (e) { inputArea.value = saved; setDefaultCalculationName(); } processAndHighlight(); showMessage(`Loaded from slot ${i}!`); } else { showMessage(`Slot ${i} is empty.`); } }); }
+        // --- SUPABASE CLOUD SAVE/LOAD IMPLEMENTATION ---
+        
+        // Helper function to handle saving
+        async function saveToCloudSlot(slotId) {
+            const content = inputArea.value;
+            const name = calculationNameInput.value.trim() || 'Untitled Calculation';
+            
+            if (!content) {
+                showMessage('Nothing to save!');
+                return;
+            }
+
+            showMessage(`Saving to Cloud Slot ${slotId}...`);
+            
+            // Upsert: Create or Overwrite based on 'id'
+            const { data, error } = await supabase
+                .from('slots')
+                .upsert({ id: slotId, name: name, content: content });
+
+            if (error) {
+                console.error('Supabase Error:', error);
+                showMessage(`Error: ${error.message}. (Did you create the 'slots' table?)`);
+            } else {
+                showMessage(`Saved to Cloud Slot ${slotId}!`);
+            }
+        }
+
+        // Helper function to handle loading
+        async function loadFromCloudSlot(slotId) {
+            showMessage(`Loading Cloud Slot ${slotId}...`);
+            
+            const { data, error } = await supabase
+                .from('slots')
+                .select('*')
+                .eq('id', slotId)
+                .single();
+
+            if (error) {
+                console.error('Supabase Error:', error);
+                if (error.code === 'PGRST116') {
+                    showMessage(`Slot ${slotId} is empty.`);
+                } else {
+                    showMessage(`Error: ${error.message}`);
+                }
+            } else if (data) {
+                inputArea.value = data.content || '';
+                calculationNameInput.value = data.name || 'Untitled';
+                processAndHighlight();
+                showMessage(`Loaded Cloud Slot ${slotId}!`);
+            }
+        }
+
+        // Attach listeners to buttons 1, 2, and 3
+        for (let i = 1; i <= 3; i++) {
+            $(`#save-${i}`).addEventListener('click', () => saveToCloudSlot(i));
+            $(`#load-${i}`).addEventListener('click', () => loadFromCloudSlot(i));
+        }
+
+        // --- End Supabase Logic ---
+
         saveToFileButton.addEventListener('click', () => { const data = { name: calculationNameInput.value, content: inputArea.value }; if (!data.content.trim()) { showMessage('Nothing to save!'); return; } const sanitized = (calculationNameInput.value.trim() || 'Calculation').replace(/[\/\\?%*:|"<>]/g, '').replace(/\s+/g, '_'); const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `IC_${sanitized}.txt`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href); showMessage('File download started!'); });
         loadFromFileButton.addEventListener('click', () => { fileLoaderInput.click(); });
         fileLoaderInput.addEventListener('change', (event) => { if (!event.target.files.length) return; const file = event.target.files[0]; const reader = new FileReader(); reader.onload = (e) => { const content = e.target.result; try { const data = JSON.parse(content); if (data?.content !== undefined) { calculationNameInput.value = data.name || 'Insta-Clone'; inputArea.value = data.content; } else { throw new Error("Not our format"); } } catch (err) { inputArea.value = content; calculationNameInput.value = file.name.replace(/\.[^/.]+$/, ""); } processAndHighlight(); showMessage(`File "${file.name}" loaded!`); }; reader.onerror = () => showMessage(`Error reading file.`); reader.readAsText(file); event.target.value = null; });
@@ -649,7 +586,6 @@
         // --- Variables Modal Logic ---
         const isValidVariableName = (name) => /^[a-zA-Z_]\w*$/.test(name) && !specialWords.hasOwnProperty(name.toLowerCase());
 
-        // MODIFIED: This function now correctly renames variables in code AND in {variable} comments.
         const renameVariableInCode = (oldName, newName) => {
             const lowerNewName = newName.toLowerCase();
             const lowerOldName = oldName.toLowerCase();
@@ -662,7 +598,7 @@
 
             const performRename = () => {
                 const codeRegex = new RegExp(`\\b${oldName}\\b`, 'gi');
-                const commentRegex = new RegExp(`\\{${oldName}\\}`, 'gi'); // Regex for {variable}
+                const commentRegex = new RegExp(`\\{${oldName}\\}`, 'gi'); 
                 
                 const lines = inputArea.value.split('\n');
                 const newLines = lines.map(line => {
@@ -672,10 +608,8 @@
                     } else {
                         const codePart = line.substring(0, commentIndex);
                         const commentPart = line.substring(commentIndex);
-                        
                         const updatedCodePart = codePart.replace(codeRegex, newName);
                         const updatedCommentPart = commentPart.replace(commentRegex, `{${newName}}`);
-                        
                         return updatedCodePart + updatedCommentPart;
                     }
                 });
@@ -684,9 +618,7 @@
                 processAndHighlight();
                 populateVariablesModal();
                 showMessage(`Renamed "${oldName}" to "${newName}".`);
-                if (confirmModal.classList.contains('flex')) {
-                    confirmModal.classList.add('hidden');
-                }
+                if (confirmModal.classList.contains('flex')) { confirmModal.classList.add('hidden'); }
             };
 
             if (variables.hasOwnProperty(lowerNewName)) {
@@ -696,20 +628,14 @@
                 confirmModal.classList.add('flex');
                 confirmModal.classList.remove('hidden');
                 $('#confirm-ok').onclick = performRename;
-                $('#confirm-cancel').onclick = () => {
-                    confirmModal.classList.add('hidden');
-                    populateVariablesModal(); // Refresh to cancel the input field
-                };
+                $('#confirm-cancel').onclick = () => { confirmModal.classList.add('hidden'); populateVariablesModal(); };
             } else {
                 performRename();
             }
         };
 
         const populateVariablesModal = () => {
-            if (orderedVariables.size === 0) {
-                variablesContent.innerHTML = `<div class="text-gray-400">No variables have been defined yet.</div>`;
-                return;
-            }
+            if (orderedVariables.size === 0) { variablesContent.innerHTML = `<div class="text-gray-400">No variables have been defined yet.</div>`; return; }
             let contentHTML = '<div class="grid grid-cols-[1fr,auto,1fr,2fr] gap-x-4 items-center border-b border-gray-600 pb-2 mb-2 text-sm text-gray-400"><h5>Variable</h5><div></div><h5 class="text-center">Final Value</h5><h5 class="text-right">Comment</h5></div>';
             for (const [name, data] of orderedVariables.entries()) {
                 const formattedValue = formatResult(data.value);
@@ -728,15 +654,8 @@
             variablesContent.innerHTML = contentHTML;
         };
 
-        variablesButton.addEventListener('click', () => {
-            populateVariablesModal();
-            variablesModal.classList.remove('hidden');
-            variablesModal.classList.add('flex');
-        });
-        variablesCloseButton.addEventListener('click', () => {
-            variablesModal.classList.add('hidden');
-            variablesModal.classList.remove('flex');
-        });
+        variablesButton.addEventListener('click', () => { populateVariablesModal(); variablesModal.classList.remove('hidden'); variablesModal.classList.add('flex'); });
+        variablesCloseButton.addEventListener('click', () => { variablesModal.classList.add('hidden'); variablesModal.classList.remove('flex'); });
 
         variablesContent.addEventListener('click', (e) => {
             const renameBtn = e.target.closest('.rename-btn');
@@ -744,58 +663,18 @@
                 e.stopPropagation();
                 const oldName = renameBtn.dataset.varName;
                 const nameCell = renameBtn.previousElementSibling;
-
                 if (nameCell.querySelector('input')) return;
-
-                document.querySelectorAll('.variable-rename-input').forEach(inp => {
-                    const originalName = inp.parentElement.parentElement.dataset.varName;
-                    inp.parentElement.innerHTML = originalName;
-                });
-
+                document.querySelectorAll('.variable-rename-input').forEach(inp => { const originalName = inp.parentElement.parentElement.dataset.varName; inp.parentElement.innerHTML = originalName; });
                 nameCell.innerHTML = `<input type="text" class="variable-rename-input" value="${oldName}" />`;
                 const input = nameCell.querySelector('input');
-                input.focus();
-                input.select();
-
-                const handleFinish = (shouldRename) => {
-                    const newName = input.value.trim();
-                    if (shouldRename && newName) {
-                        renameVariableInCode(oldName, newName);
-                    } else {
-                        populateVariablesModal();
-                    }
-                };
-
-                input.addEventListener('keydown', (ev) => {
-                    if (ev.key === 'Enter') {
-                        ev.preventDefault();
-                        input.blur();
-                        handleFinish(true);
-                    } else if (ev.key === 'Escape') {
-                        handleFinish(false);
-                    }
-                });
-                input.addEventListener('blur', () => {
-                    setTimeout(() => {
-                        if (document.body.contains(input)) {
-                             handleFinish(false);
-                        }
-                    }, 100);
-                }, { once: true });
-
+                input.focus(); input.select();
+                const handleFinish = (shouldRename) => { const newName = input.value.trim(); if (shouldRename && newName) { renameVariableInCode(oldName, newName); } else { populateVariablesModal(); } };
+                input.addEventListener('keydown', (ev) => { if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); handleFinish(true); } else if (ev.key === 'Escape') { handleFinish(false); } });
+                input.addEventListener('blur', () => { setTimeout(() => { if (document.body.contains(input)) { handleFinish(false); } }, 100); }, { once: true });
                 return;
             }
-
             const row = e.target.closest('.variable-row');
-            if (row && !row.querySelector('input')) {
-                const lineIndex = parseInt(row.dataset.lineIndex, 10);
-                variablesModal.classList.add('hidden');
-                variablesModal.classList.remove('flex');
-                
-                setTimeout(() => {
-                    scrollToLine(lineIndex);
-                }, 0);
-            }
+            if (row && !row.querySelector('input')) { const lineIndex = parseInt(row.dataset.lineIndex, 10); variablesModal.classList.add('hidden'); variablesModal.classList.remove('flex'); setTimeout(() => { scrollToLine(lineIndex); }, 0); }
         });
 
         // --- Line Highlighting Logic ---

@@ -986,107 +986,127 @@
             }
         });
 		
-     // --- FINAL ROBUST AUTO-SAVE (Version 2) ---
+     // --- BULLETPROOF AUTO-SAVE (Wake-Lock Compatible) ---
         
-        // Configuration: 24 Hours (in milliseconds)
-        const EXPIRATION_LIMIT = 6 * 60 * 60 * 1000; 
-
-        // UPDATED KEYS: Renamed to '_v2' to force a fresh start 
-        // and ignore any corrupted data from previous tests.
-        const KEY_CONTENT = 'insta_clone_content_v2';
-        const KEY_NAME = 'insta_clone_name_v2';
-        const KEY_TIMESTAMP = 'insta_clone_timestamp_v2';
-        
-        // Settings Keys (Keep these persistent)
-        const KEY_CLEAN = 'insta_clone_setting_clean';
-        const KEY_NOSLEEP = 'insta_clone_setting_nosleep';
-        const KEY_ROUND = 'insta_clone_setting_round';
-
-        const saveToLocal = () => {
-            const now = Date.now();
-            localStorage.setItem(KEY_CONTENT, inputArea.value);
-            localStorage.setItem(KEY_NAME, calculationNameInput.value);
-            localStorage.setItem(KEY_TIMESTAMP, now); 
+        (function() {
+            const EXPIRATION_LIMIT = 24 * 60 * 60 * 1000; // 24 Hours
             
-            // Save Settings
-            localStorage.setItem(KEY_CLEAN, cleanViewToggle.checked);
-            localStorage.setItem(KEY_NOSLEEP, noSleepToggle.checked);
-            localStorage.setItem(KEY_ROUND, roundingToggle.checked);
-        };
+            // Unique keys
+            const KEY_CONTENT = 'insta_clone_content_v4'; // Bumped to v4 to be safe
+            const KEY_NAME = 'insta_clone_name_v4';
+            const KEY_TIMESTAMP = 'insta_clone_timestamp_v4';
+            const KEY_CLEAN = 'insta_clone_setting_clean';
+            const KEY_NOSLEEP = 'insta_clone_setting_nosleep';
+            const KEY_ROUND = 'insta_clone_setting_round';
 
-        // Attach listeners
-        inputArea.addEventListener('input', saveToLocal);
-        calculationNameInput.addEventListener('input', saveToLocal);
-        cleanViewToggle.addEventListener('change', saveToLocal);
-        noSleepToggle.addEventListener('change', saveToLocal);
-        roundingToggle.addEventListener('change', saveToLocal);
+            // Safe Accessors
+            const getEl = (id) => document.getElementById(id);
+            const inputArea = getEl('inputArea');
+            const nameInput = getEl('calculationNameInput');
+            const toggleClean = getEl('cleanViewToggle');
+            const toggleSleep = getEl('noSleepToggle');
+            const toggleRound = getEl('roundingToggle');
+            const btnErase = getEl('eraseButton');
 
-        // Erase Button
-        eraseButton.onclick = () => {
-             inputArea.value = '';
-             calculationNameInput.value = '';
-             
-             // Clear v2 keys
-             localStorage.removeItem(KEY_CONTENT);
-             localStorage.removeItem(KEY_NAME);
-             localStorage.removeItem(KEY_TIMESTAMP);
-             
-             processAndHighlight();
-             setDefaultCalculationName();
-             showMessage('Cleared!');
-        };
+            if (!inputArea || !nameInput) return;
 
-        // Smart Load Logic
-        setTimeout(() => {
-            // 1. Restore Toggles
-            const savedClean = localStorage.getItem(KEY_CLEAN) === 'true';
-            const savedSleep = localStorage.getItem(KEY_NOSLEEP) === 'true';
-            const savedRound = localStorage.getItem(KEY_ROUND) === 'true';
+            const saveToLocal = () => {
+                const now = Date.now();
+                localStorage.setItem(KEY_CONTENT, inputArea.value);
+                localStorage.setItem(KEY_NAME, nameInput.value);
+                localStorage.setItem(KEY_TIMESTAMP, now); 
+                
+                if(toggleClean) localStorage.setItem(KEY_CLEAN, toggleClean.checked);
+                if(toggleSleep) localStorage.setItem(KEY_NOSLEEP, toggleSleep.checked);
+                if(toggleRound) localStorage.setItem(KEY_ROUND, toggleRound.checked);
+            };
 
-            if (savedClean !== cleanViewToggle.checked) cleanViewToggle.checked = savedClean;
-            if (savedRound !== roundingToggle.checked) roundingToggle.checked = savedRound;
-            if (savedSleep !== noSleepToggle.checked) {
-                noSleepToggle.checked = savedSleep;
-                noSleepToggle.dispatchEvent(new Event('change'));
+            // Listeners
+            inputArea.addEventListener('input', saveToLocal);
+            nameInput.addEventListener('input', saveToLocal);
+            if(toggleClean) toggleClean.addEventListener('change', saveToLocal);
+            // NOTE: We do NOT listen to 'noSleepToggle' change immediately to avoid the reset loop
+            if(toggleSleep) {
+                toggleSleep.addEventListener('change', (e) => {
+                    // Only save if it was a genuine user interaction (trusted)
+                    if (e.isTrusted) saveToLocal();
+                });
+            }
+            if(toggleRound) toggleRound.addEventListener('change', saveToLocal);
+
+            // Erase Logic
+            if (btnErase) {
+                btnErase.addEventListener('click', () => {
+                    localStorage.removeItem(KEY_CONTENT);
+                    localStorage.removeItem(KEY_NAME);
+                    localStorage.removeItem(KEY_TIMESTAMP);
+                });
             }
 
-            // 2. Restore Content
-            const urlParams = new URLSearchParams(window.location.search);
-            if (!urlParams.has('data')) {
-                const savedContent = localStorage.getItem(KEY_CONTENT);
-                const savedName = localStorage.getItem(KEY_NAME);
-                const timestampStr = localStorage.getItem(KEY_TIMESTAMP);
+            // Load Logic
+            setTimeout(() => {
+                // Restore Toggles
+                const sClean = localStorage.getItem(KEY_CLEAN) === 'true';
+                const sSleep = localStorage.getItem(KEY_NOSLEEP) === 'true';
+                const sRound = localStorage.getItem(KEY_ROUND) === 'true';
 
-                if (savedContent !== null) {
-                    const now = Date.now();
-                    let shouldKeep = true; // DEFAULT: Keep data (Fail-Safe)
+                if (toggleClean && sClean !== toggleClean.checked) toggleClean.checked = sClean;
+                if (toggleRound && sRound !== toggleRound.checked) toggleRound.checked = sRound;
+                
+                // --- SPECIAL HANDLING FOR NO SLEEP ---
+                if (toggleSleep && sSleep) {
+                    toggleSleep.checked = true; // Visually set it to ON
+                    
+                    // We cannot activate WakeLock immediately (Browser will block it).
+                    // We must wait for the FIRST user interaction (click or key).
+                    const activateWakeLock = () => {
+                        // Only trigger if it is still checked
+                        if (toggleSleep.checked) {
+                            toggleSleep.dispatchEvent(new Event('change'));
+                        }
+                    };
+                    
+                    // Add one-time listeners to the document
+                    document.addEventListener('click', activateWakeLock, { once: true });
+                    document.addEventListener('keydown', activateWakeLock, { once: true });
+                }
 
-                    if (timestampStr) {
-                        const savedTime = parseInt(timestampStr);
-                        // Only delete if we have a Valid Number AND it is definitely too old
-                        if (!isNaN(savedTime)) {
-                             const age = now - savedTime;
-                             // Use Greater Than (>) to keep Notepad++ happy
-                             if (age > EXPIRATION_LIMIT) {
-                                 shouldKeep = false;
-                             }
+                // Restore Content
+                const urlParams = new URLSearchParams(window.location.search);
+                if (!urlParams.has('data')) {
+                    const savedContent = localStorage.getItem(KEY_CONTENT);
+                    const savedName = localStorage.getItem(KEY_NAME);
+                    const timestampStr = localStorage.getItem(KEY_TIMESTAMP);
+
+                    if (savedContent !== null) {
+                        const now = Date.now();
+                        let shouldKeep = true; 
+
+                        if (timestampStr) {
+                            const savedTime = parseInt(timestampStr);
+                            if (!isNaN(savedTime)) {
+                                 const age = now - savedTime;
+                                 if (age > EXPIRATION_LIMIT) shouldKeep = false;
+                            }
+                        }
+
+                        if (shouldKeep) {
+                            inputArea.value = savedContent;
+                            if (savedName) nameInput.value = savedName;
+                            
+                            if (typeof processAndHighlight === 'function') {
+                                processAndHighlight();
+                            }
+                            console.log("Auto-save V4 loaded.");
+                        } else {
+                            localStorage.removeItem(KEY_CONTENT);
+                            localStorage.removeItem(KEY_NAME);
+                            localStorage.removeItem(KEY_TIMESTAMP);
                         }
                     }
-
-                    if (shouldKeep) {
-                        inputArea.value = savedContent;
-                        if (savedName) calculationNameInput.value = savedName;
-                        console.log("Auto-save loaded.");
-                    } else {
-                        console.log("Auto-save expired. Deleting.");
-                        localStorage.removeItem(KEY_CONTENT);
-                        localStorage.removeItem(KEY_NAME);
-                        localStorage.removeItem(KEY_TIMESTAMP);
-                    }
                 }
-            }
-            processAndHighlight();
-        }, 200); // Increased timeout slightly to ensure Edge is ready
+            }, 500); 
+        })();
     </script>
 </body>
 </html>

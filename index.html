@@ -985,6 +985,108 @@
                 cloudStatusBadge.innerHTML = `<span class="text-red-400">●</span> Offline Mode`;
             }
         });
+		
+     // --- FINAL ROBUST AUTO-SAVE (Version 2) ---
+        
+        // Configuration: 24 Hours (in milliseconds)
+        const EXPIRATION_LIMIT = 6 * 60 * 60 * 1000; 
+
+        // UPDATED KEYS: Renamed to '_v2' to force a fresh start 
+        // and ignore any corrupted data from previous tests.
+        const KEY_CONTENT = 'insta_clone_content_v2';
+        const KEY_NAME = 'insta_clone_name_v2';
+        const KEY_TIMESTAMP = 'insta_clone_timestamp_v2';
+        
+        // Settings Keys (Keep these persistent)
+        const KEY_CLEAN = 'insta_clone_setting_clean';
+        const KEY_NOSLEEP = 'insta_clone_setting_nosleep';
+        const KEY_ROUND = 'insta_clone_setting_round';
+
+        const saveToLocal = () => {
+            const now = Date.now();
+            localStorage.setItem(KEY_CONTENT, inputArea.value);
+            localStorage.setItem(KEY_NAME, calculationNameInput.value);
+            localStorage.setItem(KEY_TIMESTAMP, now); 
+            
+            // Save Settings
+            localStorage.setItem(KEY_CLEAN, cleanViewToggle.checked);
+            localStorage.setItem(KEY_NOSLEEP, noSleepToggle.checked);
+            localStorage.setItem(KEY_ROUND, roundingToggle.checked);
+        };
+
+        // Attach listeners
+        inputArea.addEventListener('input', saveToLocal);
+        calculationNameInput.addEventListener('input', saveToLocal);
+        cleanViewToggle.addEventListener('change', saveToLocal);
+        noSleepToggle.addEventListener('change', saveToLocal);
+        roundingToggle.addEventListener('change', saveToLocal);
+
+        // Erase Button
+        eraseButton.onclick = () => {
+             inputArea.value = '';
+             calculationNameInput.value = '';
+             
+             // Clear v2 keys
+             localStorage.removeItem(KEY_CONTENT);
+             localStorage.removeItem(KEY_NAME);
+             localStorage.removeItem(KEY_TIMESTAMP);
+             
+             processAndHighlight();
+             setDefaultCalculationName();
+             showMessage('Cleared!');
+        };
+
+        // Smart Load Logic
+        setTimeout(() => {
+            // 1. Restore Toggles
+            const savedClean = localStorage.getItem(KEY_CLEAN) === 'true';
+            const savedSleep = localStorage.getItem(KEY_NOSLEEP) === 'true';
+            const savedRound = localStorage.getItem(KEY_ROUND) === 'true';
+
+            if (savedClean !== cleanViewToggle.checked) cleanViewToggle.checked = savedClean;
+            if (savedRound !== roundingToggle.checked) roundingToggle.checked = savedRound;
+            if (savedSleep !== noSleepToggle.checked) {
+                noSleepToggle.checked = savedSleep;
+                noSleepToggle.dispatchEvent(new Event('change'));
+            }
+
+            // 2. Restore Content
+            const urlParams = new URLSearchParams(window.location.search);
+            if (!urlParams.has('data')) {
+                const savedContent = localStorage.getItem(KEY_CONTENT);
+                const savedName = localStorage.getItem(KEY_NAME);
+                const timestampStr = localStorage.getItem(KEY_TIMESTAMP);
+
+                if (savedContent !== null) {
+                    const now = Date.now();
+                    let shouldKeep = true; // DEFAULT: Keep data (Fail-Safe)
+
+                    if (timestampStr) {
+                        const savedTime = parseInt(timestampStr);
+                        // Only delete if we have a Valid Number AND it is definitely too old
+                        if (!isNaN(savedTime)) {
+                             const age = now - savedTime;
+                             // Use Greater Than (>) to keep Notepad++ happy
+                             if (age > EXPIRATION_LIMIT) {
+                                 shouldKeep = false;
+                             }
+                        }
+                    }
+
+                    if (shouldKeep) {
+                        inputArea.value = savedContent;
+                        if (savedName) calculationNameInput.value = savedName;
+                        console.log("Auto-save loaded.");
+                    } else {
+                        console.log("Auto-save expired. Deleting.");
+                        localStorage.removeItem(KEY_CONTENT);
+                        localStorage.removeItem(KEY_NAME);
+                        localStorage.removeItem(KEY_TIMESTAMP);
+                    }
+                }
+            }
+            processAndHighlight();
+        }, 200); // Increased timeout slightly to ensure Edge is ready
     </script>
 </body>
 </html>

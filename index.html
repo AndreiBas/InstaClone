@@ -3,17 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Insta-Clone Calculator (Secure Cloud)</title>
-    <!-- Use the Inter font from Google Fonts -->
+    <title>Insta-Clone Calculator (Robust)</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- pako.js for compression/decompression for sharing -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
-    <!-- Load Supabase JS -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://unpkg.com/@supabase/supabase-js@2.39.7/dist/umd/supabase.js"></script>
     
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -32,6 +28,7 @@
         #highlightingArea, #inputArea, #autocomplete-mirror { padding: 1rem; margin: 0; border: 0; white-space: pre-wrap; word-wrap: break-word; overflow-y: auto; position: absolute; top: 0; right: 0; bottom: 0; left: 0; border-radius: 0.75rem; font: inherit; }
         #highlightingArea { background-color: #111827; z-index: 1; pointer-events: none; color: #d1d5db; }
         #highlightingArea > div { min-height: 1.5em; }
+        /* Fallback color in case JS crashes, ensuring text is visible at least */
         #inputArea { z-index: 2; background-color: transparent; color: transparent; caret-color: #fff; resize: none; outline: none; }
         #autocomplete-mirror { z-index: -1; visibility: hidden; pointer-events: none; }
 
@@ -77,9 +74,7 @@
 </head>
 <body class="bg-gray-900 text-gray-200 antialiased flex flex-col items-center min-h-screen p-2 sm:p-4">
 
-    <!-- Main Content -->
     <div class="w-full max-w-screen-2xl bg-gray-800 rounded-2xl shadow-2xl overflow-hidden grid grid-rows-2 md:grid-rows-1 md:grid-cols-2 flex-1 min-h-0 md:max-h-[80vh]">
-        <!-- Input -->
         <div class="flex flex-col p-4 md:p-8 min-h-0">
             <div class="flex justify-between items-center mb-2 h-12 gap-2 md:gap-4 flex-shrink-0">
                 <input type="text" id="calculationNameInput" placeholder="Calculation Name..." class="text-xl md:text-2xl font-bold text-white bg-transparent focus:outline-none focus:ring-2 focus:ring-indigo-500 rounded-lg px-2 py-1 w-full -ml-2">
@@ -92,7 +87,6 @@
                 <div id="autocomplete-popup" class="hidden"></div>
             </div>
         </div>
-        <!-- Results -->
         <div class="flex flex-col p-4 md:p-8 border-t-2 md:border-t-0 md:border-l-2 border-gray-700 bg-gray-700/30 min-h-0">
             <div class="flex justify-between items-center mb-2 min-h-[3rem] h-auto flex-shrink-0">
                 <h2 class="text-2xl font-bold text-white">Results</h2>
@@ -108,26 +102,22 @@
         </div>
     </div>
 
-    <!-- Mobile Controls Toggle -->
     <div class="w-full max-w-screen-2xl mt-2 md:hidden">
         <button id="toggleControlsButton" class="w-full bg-gray-700 text-white font-medium py-2 px-4 rounded-lg shadow-md hover:bg-gray-600">Manage Saves & Files</button>
     </div>
 
-    <!-- Controls Panel -->
     <div id="controls-panel" class="w-full max-w-screen-2xl mt-4 p-4 md:p-6 bg-gray-800 rounded-2xl shadow-2xl hidden md:block">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold text-white flex items-center gap-2">
                 Global Cloud Slots (Supabase)
                 <span id="cloud-status-badge" class="text-xs font-normal text-gray-400 border border-gray-500 px-2 py-0.5 rounded-full flex items-center gap-1">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg>
-                    Locked
+                    Initializing...
                 </span>
             </h3>
         </div>
         
-        <!-- Unified Cloud Slots Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 mb-4">
-            <!-- Slot 1 -->
             <div class="flex items-stretch bg-gray-700/50 rounded-lg overflow-hidden border border-gray-700 shadow-sm transition-colors duration-200" id="slot-row-1">
                 <button id="save-1" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-r border-gray-600 focus:outline-none z-10">SAVE</button>
                 <div class="flex-1 flex items-center justify-center px-2 py-2 overflow-hidden transition-colors duration-200" id="slot-mid-1">
@@ -135,7 +125,6 @@
                 </div>
                 <button id="load-1" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-l border-gray-600 focus:outline-none z-10">LOAD</button>
             </div>
-            <!-- Slot 2 -->
             <div class="flex items-stretch bg-gray-700/50 rounded-lg overflow-hidden border border-gray-700 shadow-sm transition-colors duration-200" id="slot-row-2">
                 <button id="save-2" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-r border-gray-600 focus:outline-none z-10">SAVE</button>
                 <div class="flex-1 flex items-center justify-center px-2 py-2 overflow-hidden transition-colors duration-200" id="slot-mid-2">
@@ -143,7 +132,6 @@
                 </div>
                 <button id="load-2" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-l border-gray-600 focus:outline-none z-10">LOAD</button>
             </div>
-            <!-- Slot 3 -->
             <div class="flex items-stretch bg-gray-700/50 rounded-lg overflow-hidden border border-gray-700 shadow-sm transition-colors duration-200" id="slot-row-3">
                 <button id="save-3" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-r border-gray-600 focus:outline-none z-10">SAVE</button>
                 <div class="flex-1 flex items-center justify-center px-2 py-2 overflow-hidden transition-colors duration-200" id="slot-mid-3">
@@ -151,7 +139,6 @@
                 </div>
                 <button id="load-3" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-l border-gray-600 focus:outline-none z-10">LOAD</button>
             </div>
-            <!-- Slot 4 -->
             <div class="flex items-stretch bg-gray-700/50 rounded-lg overflow-hidden border border-gray-700 shadow-sm transition-colors duration-200" id="slot-row-4">
                 <button id="save-4" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-r border-gray-600 focus:outline-none z-10">SAVE</button>
                 <div class="flex-1 flex items-center justify-center px-2 py-2 overflow-hidden transition-colors duration-200" id="slot-mid-4">
@@ -159,7 +146,6 @@
                 </div>
                 <button id="load-4" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-l border-gray-600 focus:outline-none z-10">LOAD</button>
             </div>
-            <!-- Slot 5 -->
             <div class="flex items-stretch bg-gray-700/50 rounded-lg overflow-hidden border border-gray-700 shadow-sm transition-colors duration-200" id="slot-row-5">
                 <button id="save-5" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-r border-gray-600 focus:outline-none z-10">SAVE</button>
                 <div class="flex-1 flex items-center justify-center px-2 py-2 overflow-hidden transition-colors duration-200" id="slot-mid-5">
@@ -167,7 +153,6 @@
                 </div>
                 <button id="load-5" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-l border-gray-600 focus:outline-none z-10">LOAD</button>
             </div>
-            <!-- Slot 6 -->
             <div class="flex items-stretch bg-gray-700/50 rounded-lg overflow-hidden border border-gray-700 shadow-sm transition-colors duration-200" id="slot-row-6">
                 <button id="save-6" class="px-4 bg-gray-700 text-gray-400 font-medium text-sm transition-colors border-r border-gray-600 focus:outline-none z-10">SAVE</button>
                 <div class="flex-1 flex items-center justify-center px-2 py-2 overflow-hidden transition-colors duration-200" id="slot-mid-6">
@@ -187,7 +172,6 @@
         <input type="file" id="fileLoader" class="hidden" accept=".txt,.text/plain,.json">
     </div>
 
-    <!-- Modals -->
     <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
         <div class="bg-gray-800 rounded-xl p-6 w-full max-w-sm shadow-2xl border border-gray-700">
             <h4 id="confirm-title" class="text-xl font-bold mb-4">Overwrite Calculation?</h4>
@@ -199,7 +183,6 @@
         </div>
     </div>
 
-    <!-- Password Modal -->
     <div id="password-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-80 p-4 backdrop-blur-sm">
         <div class="bg-gray-800 rounded-xl p-6 w-full max-w-md shadow-2xl border border-gray-700">
             <div class="flex items-center justify-center mb-4 text-purple-500">
@@ -220,7 +203,6 @@
 
     <div id="message-box" class="fixed top-4 left-1/2 -translate-x-1/2 p-4 bg-gray-800 text-white rounded-lg shadow-lg z-50 hidden opacity-0 transition-opacity duration-300"><p id="message-text"></p></div>
     
-    <!-- Help Modal -->
     <div id="help-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
         <div class="bg-gray-800 rounded-xl p-6 w-full max-w-3xl shadow-2xl border border-gray-700 flex flex-col max-h-[90vh]">
             <h4 class="text-2xl font-bold mb-4 text-white">Calculator Guide</h4>
@@ -229,7 +211,6 @@
         </div>
     </div>
 
-    <!-- Variables Modal -->
     <div id="variables-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
         <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-2xl border border-gray-700 flex flex-col max-h-[80vh]">
             <h4 class="text-2xl font-bold mb-4 text-white">Current Variables</h4>
@@ -239,12 +220,7 @@
     </div>
 
     <script>
-        // --- Supabase Configuration ---
-        const SUPABASE_URL = 'https://erceyiltzqsshwqdueuh.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVyY2V5aWx0enFzc2h3cWR1ZXVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1MTMwNTQsImV4cCI6MjA4MDA4OTA1NH0.Oy9gppo_HDIBE3u9ugdlR5f71np188KYoSKLihi7wY0';
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-        // --- Core Application Logic ---
+        // --- Core Application Logic (Runs first!) ---
         
         const $ = (selector) => document.querySelector(selector);
         
@@ -286,6 +262,9 @@
         let orderedVariables = new Map();
         let wakeLock = null;
         let autocompleteState = { active: false, suggestions: [], selectedIndex: -1, wordStartIndex: -1, currentWord: '' };
+        
+        // Cloud Variables (Initialized later)
+        let supabase = null;
         let isCloudUnlocked = false; 
         let pendingCloudAction = null; 
         let cloudSlotMetadata = {}; 
@@ -481,8 +460,8 @@
                 }
                 if (lowerTrimmedLine === 'hiddenend') {
                     isHiddenBlockActive = false;
-                     if (!isCleanView) {
-                        outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1 break-all">${highlightText(line, new Set(Object.keys(variables)))}</span></div>`;
+                      if (!isCleanView) {
+                         outputHTML += `<div class="flex items-start output-highlight output-line" data-line-id="${i}"><span class="mr-4 text-gray-400 font-bold">></span><span class="flex-1 break-all">${highlightText(line, new Set(Object.keys(variables)))}</span></div>`;
                     }
                     continue;
                 }
@@ -617,7 +596,7 @@
             inputArea.dispatchEvent(new Event('input', { bubbles: true }));
         }
         
-        // --- Event Listeners ---
+        // --- Event Listeners (Must attach immediately) ---
         inputArea.addEventListener('input', () => { processAndHighlight(); handleAutocomplete(); });
         inputArea.addEventListener('scroll', () => { highlightingArea.scrollTop = inputArea.scrollTop; highlightingArea.scrollLeft = inputArea.scrollLeft; });
         roundingToggle.addEventListener('change', processAndHighlight);
@@ -646,17 +625,63 @@
 
         // --- SECURITY & CLOUD LOGIC ---
 
-        async function fetchCloudSlotMetadata() {
-            const { data, error } = await supabase.from('slots').select('id, name');
-            if (data) {
-                cloudSlotMetadata = {};
-                data.forEach(row => {
-                    cloudSlotMetadata[row.id] = row.name;
-                });
-                updateCloudButtons();
+        function unlockCloudUI() {
+            isCloudUnlocked = true;
+            cloudStatusBadge.innerHTML = `<span class="text-green-400">●</span> Unlocked`;
+            cloudStatusBadge.classList.replace('text-gray-400', 'text-green-400');
+            cloudStatusBadge.classList.replace('border-gray-500', 'border-green-600');
+            
+            for (let i = 1; i <= 6; i++) {
+                const saveBtn = $(`#save-${i}`);
+                const loadBtn = $(`#load-${i}`);
+                const slotRow = $(`#slot-row-${i}`);
+                const midDiv = $(`#slot-mid-${i}`);
+                const slotText = $(`#slot-text-${i}`);
+
+                slotRow.classList.replace('bg-gray-700/50', 'bg-gray-700');
+                
+                saveBtn.className = 'px-4 bg-transparent text-gray-300 font-medium text-sm transition-colors duration-200 border-r border-gray-600 focus:outline-none z-10';
+                loadBtn.className = 'px-4 bg-transparent text-gray-300 font-medium text-sm transition-colors duration-200 border-l border-gray-600 focus:outline-none z-10';
+                
+                saveBtn.onmouseenter = () => {
+                    saveBtn.classList.add('bg-green-600', 'text-white');
+                    midDiv.classList.add('bg-green-600');
+                    slotText.classList.remove('text-gray-200', 'text-gray-500');
+                    slotText.classList.add('text-white');
+                };
+                saveBtn.onmouseleave = () => {
+                    saveBtn.classList.remove('bg-green-600', 'text-white');
+                    midDiv.classList.remove('bg-green-600');
+                    slotText.classList.remove('text-white');
+                    updateCloudButtons();
+                };
+
+                loadBtn.onmouseenter = () => {
+                    loadBtn.classList.add('bg-blue-600', 'text-white');
+                    midDiv.classList.add('bg-blue-600');
+                    slotText.classList.remove('text-gray-200', 'text-gray-500');
+                    slotText.classList.add('text-white');
+                };
+                loadBtn.onmouseleave = () => {
+                    loadBtn.classList.remove('bg-blue-600', 'text-white');
+                    midDiv.classList.remove('bg-blue-600');
+                    slotText.classList.remove('text-white');
+                    updateCloudButtons();
+                };
+
+                if (slotText.textContent === "Locked") {
+                     slotText.textContent = "Empty";
+                }
+            }
+            fetchCloudSlotMetadata();
+            passwordModal.classList.add('hidden');
+            if (pendingCloudAction) {
+                if (pendingCloudAction.type === 'save') initiateSave(pendingCloudAction.slotId);
+                else if (pendingCloudAction.type === 'load') loadFromCloudSlot(pendingCloudAction.slotId);
+                pendingCloudAction = null;
             }
         }
-
+        
         function updateCloudButtons() {
             for (let i = 1; i <= 6; i++) {
                 const slotTextElement = $(`#slot-text-${i}`);
@@ -674,82 +699,26 @@
             }
         }
 
-        function unlockCloudUI() {
-            isCloudUnlocked = true;
-            cloudStatusBadge.innerHTML = `<span class="text-green-400">●</span> Unlocked`;
-            cloudStatusBadge.classList.replace('text-gray-400', 'text-green-400');
-            cloudStatusBadge.classList.replace('border-gray-500', 'border-green-600');
-            
-            for (let i = 1; i <= 6; i++) {
-                const saveBtn = $(`#save-${i}`);
-                const loadBtn = $(`#load-${i}`);
-                const slotRow = $(`#slot-row-${i}`);
-                const midDiv = $(`#slot-mid-${i}`);
-                const slotText = $(`#slot-text-${i}`);
-
-                // Update Row Style to base unlocked state
-                slotRow.classList.replace('bg-gray-700/50', 'bg-gray-700');
-                
-                // Set Buttons to transparent (visuals handled by hover)
-                saveBtn.className = 'px-4 bg-transparent text-gray-300 font-medium text-sm transition-colors duration-200 border-r border-gray-600 focus:outline-none z-10';
-                loadBtn.className = 'px-4 bg-transparent text-gray-300 font-medium text-sm transition-colors duration-200 border-l border-gray-600 focus:outline-none z-10';
-                
-                // --- HOVER LOGIC FOR SAVE ---
-                // When hovering Save, turn Save + Middle GREEN
-                saveBtn.onmouseenter = () => {
-                    saveBtn.classList.add('bg-green-600', 'text-white');
-                    midDiv.classList.add('bg-green-600');
-                    slotText.classList.remove('text-gray-200', 'text-gray-500');
-                    slotText.classList.add('text-white');
-                };
-                saveBtn.onmouseleave = () => {
-                    saveBtn.classList.remove('bg-green-600', 'text-white');
-                    midDiv.classList.remove('bg-green-600');
-                    slotText.classList.remove('text-white');
-                    updateCloudButtons(); // Restore correct text color
-                };
-
-                // --- HOVER LOGIC FOR LOAD ---
-                // When hovering Load, turn Load + Middle BLUE
-                loadBtn.onmouseenter = () => {
-                    loadBtn.classList.add('bg-blue-600', 'text-white');
-                    midDiv.classList.add('bg-blue-600');
-                    slotText.classList.remove('text-gray-200', 'text-gray-500');
-                    slotText.classList.add('text-white');
-                };
-                loadBtn.onmouseleave = () => {
-                    loadBtn.classList.remove('bg-blue-600', 'text-white');
-                    midDiv.classList.remove('bg-blue-600');
-                    slotText.classList.remove('text-white');
-                    updateCloudButtons(); // Restore correct text color
-                };
-
-                // Update text placeholder
-                if (slotText.textContent === "Locked") {
-                     slotText.textContent = "Empty";
-                }
-            }
-
-            // Fetch real names from DB
-            fetchCloudSlotMetadata();
-
-            passwordModal.classList.add('hidden');
-            
-            // Resume pending action if any
-            if (pendingCloudAction) {
-                if (pendingCloudAction.type === 'save') initiateSave(pendingCloudAction.slotId);
-                else if (pendingCloudAction.type === 'load') loadFromCloudSlot(pendingCloudAction.slotId);
-                pendingCloudAction = null;
+        async function fetchCloudSlotMetadata() {
+            if (!supabase) return;
+            const { data, error } = await supabase.from('slots').select('id, name');
+            if (data) {
+                cloudSlotMetadata = {};
+                data.forEach(row => {
+                    cloudSlotMetadata[row.id] = row.name;
+                });
+                updateCloudButtons();
             }
         }
 
         async function verifyPassword(pwd) {
+            if (!supabase) { showMessage("Cloud offline."); return; }
             passwordError.classList.add('hidden');
             const { data, error } = await supabase.rpc('verify_cloud_password', { input_pass: pwd });
             
             if (error) {
                 console.error('RPC Error:', error);
-                passwordError.textContent = "Server verification failed. Did you run the SQL setup?";
+                passwordError.textContent = "Server verification failed.";
                 passwordError.classList.remove('hidden');
                 return;
             }
@@ -757,7 +726,7 @@
             if (data === true) {
                 unlockCloudUI();
                 passwordInput.value = '';
-                showMessage("Security check passed. Cloud features unlocked.");
+                showMessage("Cloud features unlocked.");
             } else {
                 passwordError.textContent = "Incorrect password.";
                 passwordError.classList.remove('hidden');
@@ -765,6 +734,7 @@
         }
 
         function requestCloudAccess(type, slotId) {
+            if (!supabase) { showMessage("Cloud features unavailable (Library failed)."); return; }
             if (isCloudUnlocked) {
                 if (type === 'save') initiateSave(slotId);
                 else loadFromCloudSlot(slotId);
@@ -776,7 +746,6 @@
             }
         }
 
-        // Logic to trigger confirmation modal before saving
         function initiateSave(slotId) {
             const currentSlotName = cloudSlotMetadata[slotId];
             const newName = calculationNameInput.value.trim() || 'Untitled';
@@ -794,7 +763,6 @@
             confirmModal.classList.remove('hidden');
             confirmModal.classList.add('flex');
             
-            // Override the OK click handler for this specific action
             $('#confirm-ok').onclick = () => {
                 confirmModal.classList.add('hidden');
                 performCloudSave(slotId);
@@ -804,8 +772,8 @@
             };
         }
 
-        // The actual save function
         async function performCloudSave(slotId) {
+            if (!supabase) return;
             const content = inputArea.value;
             const name = calculationNameInput.value.trim() || 'Untitled Calculation';
             
@@ -817,12 +785,12 @@
             if (error) { showMessage(`Error: ${error.message}`); } 
             else { 
                 showMessage(`Saved to Cloud Slot ${slotId}!`);
-                fetchCloudSlotMetadata(); // Refresh button names
+                fetchCloudSlotMetadata();
             }
         }
 
-        // Helper function to handle loading
         async function loadFromCloudSlot(slotId) {
+            if (!supabase) return;
             const currentSlotName = cloudSlotMetadata[slotId];
             if (!currentSlotName && isCloudUnlocked) {
                 showMessage(`Slot ${slotId} is empty.`);
@@ -963,24 +931,31 @@
         outputArea.addEventListener('mouseover', (e) => { const targetLine = e.target.closest('.output-line'); if (targetLine) { clearHighlights(); const lineId = targetLine.dataset.lineId; if (lineId) { const inputLine = $(`#highlightingArea [data-line-id="${lineId}"]`); if (inputLine) { inputLine.classList.add('line-highlight'); targetLine.classList.add('line-highlight'); } } } });
         outputArea.addEventListener('mouseout', () => { clearHighlights(); });
 
-        // --- Initial Page Load ---
-        window.addEventListener('DOMContentLoaded', () => {
+        // --- Initial Page Load & Delayed Cloud Init ---
+        window.addEventListener('load', () => {
+            // 1. Core Init
             helpContent.innerHTML = HELP_CONTENT_POPUP_HTML.replace(/\\n/g, '\n');
             const urlParams = new URLSearchParams(window.location.search);
             const sharedData = urlParams.get('data');
             let loadedFromUrl = false;
+            
             if (sharedData) {
                 try {
-                    let binaryString = atob(decodeURIComponent(sharedData));
-                    const uint8array = new Uint8Array(binaryString.length);
-                    for (let i = 0; i < binaryString.length; i++) uint8array[i] = binaryString.charCodeAt(i);
-                    const data = JSON.parse(pako.inflate(uint8array, { to: 'string' }));
-                    if (data?.content !== undefined) {
-                        calculationNameInput.value = data.name || 'Insta-Clone';
-                        inputArea.value = data.content;
-                        loadedFromUrl = true;
-                        showMessage('Loaded shared calculation!');
-                        window.history.replaceState({}, document.title, window.location.pathname);
+                    // Safety check for pako
+                    if (window.pako) {
+                        let binaryString = atob(decodeURIComponent(sharedData));
+                        const uint8array = new Uint8Array(binaryString.length);
+                        for (let i = 0; i < binaryString.length; i++) uint8array[i] = binaryString.charCodeAt(i);
+                        const data = JSON.parse(pako.inflate(uint8array, { to: 'string' }));
+                        if (data?.content !== undefined) {
+                            calculationNameInput.value = data.name || 'Insta-Clone';
+                            inputArea.value = data.content;
+                            loadedFromUrl = true;
+                            showMessage('Loaded shared calculation!');
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                        }
+                    } else {
+                         console.error("Pako library missing for share link.");
                     }
                 } catch (e) { showMessage('Could not load data from link.'); }
             }
@@ -988,7 +963,27 @@
                 inputArea.value = HELP_CONTENT_INPUT;
                 setDefaultCalculationName(); 
             }
+            // Trigger first render
             processAndHighlight();
+
+            // 2. Cloud Init (Safe Mode)
+            const SUPABASE_URL = 'https://erceyiltzqsshwqdueuh.supabase.co';
+            const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVyY2V5aWx0enFzc2h3cWR1ZXVoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjQ1MTMwNTQsImV4cCI6MjA4MDA4OTA1NH0.Oy9gppo_HDIBE3u9ugdlR5f71np188KYoSKLihi7wY0';
+            
+            try {
+                if (window.supabase && window.supabase.createClient) {
+                    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+                    cloudStatusBadge.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clip-rule="evenodd" /></svg> Locked`;
+                } else {
+                    console.warn("Supabase library not found. Cloud features disabled.");
+                    cloudStatusBadge.innerHTML = `<span class="text-red-400">●</span> Offline Mode`;
+                    cloudStatusBadge.classList.replace('text-gray-400', 'text-red-400');
+                    cloudStatusBadge.classList.replace('border-gray-500', 'border-red-600');
+                }
+            } catch (e) {
+                console.error("Supabase initialization error:", e);
+                cloudStatusBadge.innerHTML = `<span class="text-red-400">●</span> Offline Mode`;
+            }
         });
     </script>
 </body>

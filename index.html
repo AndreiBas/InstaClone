@@ -393,17 +393,25 @@
             code = code.trim();
 
             if (!code || code.startsWith('for') || ['endfor', 'hiddenblock', 'hiddenend'].includes(code.toLowerCase())) return null;
+            
             const assignMatch = code.match(/^([a-zA-Z_]\w*)\s*=\s*(.*)$/);
+            
             if (assignMatch) {
-                const [, varName, expr] = assignMatch;
+                const [, varName, expr] = assignMatch; // varName preserves case (e.g. "FoodPrice")
+                
+                // Calculate using the lowercase map for math consistency
                 const result = calculate(replaceVariables(expr.trim()));
                 variables[varName.toLowerCase()] = result;
                 
                 const commentText = (commentIndex !== -1) ? line.substring(commentIndex + 2).trim() : null;
-                orderedVariables.set(varName.toLowerCase(), { value: result, comment: commentText, line: lineNumber });
+                
+                // --- FIX: Use varName (Original Case) as the display name ---
+                orderedVariables.set(varName, { value: result, comment: commentText, line: lineNumber });
 
                 return result;
             }
+            
+            // ... (Date math logic remains the same) ...
             const dateMatch = code.match(/^today\s*([+\-])\s*([a-zA-Z_]\w*|\d+)\s*(days?|weeks?|months?|years?)$/i);
             if (dateMatch) {
                 const [, op, val, unit] = dateMatch;
@@ -559,8 +567,31 @@
             outputArea.innerHTML = outputHTML || '<div class="text-gray-400">Your results will appear here in real-time.</div>';
         };
 
-        // --- Autocomplete Logic ---
-        const getAutocompleteKeywords = (textContent) => { const orderedVars = []; textContent.split('\n').forEach(line => { const match = line.trim().match(/^([a-zA-Z_]\w*)\s*=/); if (match) { const varName = match[1].toLowerCase(); const existingIndex = orderedVars.indexOf(varName); if (existingIndex > -1) orderedVars.splice(existingIndex, 1); orderedVars.push(varName); } }); const newestVarsFirst = orderedVars.reverse(); const specialKeywordsList = Object.keys(specialWords); return [...newestVarsFirst, ...specialKeywordsList.filter(k => !orderedVars.includes(k))]; };
+        // --- CASE-PRESERVING AUTOCOMPLETE ---
+        const getAutocompleteKeywords = (textContent) => { 
+            const varsMap = new Map(); // Use a Map: Key=lowercase, Value=OriginalCase
+            
+            textContent.split('\n').forEach(line => { 
+                const match = line.trim().match(/^([a-zA-Z_]\w*)\s*=/); 
+                if (match) { 
+                    const originalName = match[1]; 
+                    const lowerName = originalName.toLowerCase();
+                    
+                    // We delete and re-set to ensure the 'insertion order' stays updated 
+                    // (so the most recently typed variables appear at the top of the list)
+                    if (varsMap.has(lowerName)) varsMap.delete(lowerName);
+                    varsMap.set(lowerName, originalName);
+                } 
+            }); 
+            
+            // Convert values to array and reverse so newest are first
+            const newestVarsFirst = Array.from(varsMap.values()).reverse(); 
+            
+            const specialKeywordsList = Object.keys(specialWords); 
+            
+            // Return variables + keywords
+            return [...newestVarsFirst, ...specialKeywordsList.filter(k => !varsMap.has(k))]; 
+        };
         
         function updateAutocompletePopup() {
             if (!autocompleteState.active || autocompleteState.suggestions.length === 0) { return autocompletePopup.classList.add('hidden'); }
@@ -836,6 +867,7 @@
         const isValidVariableName = (name) => /^[a-zA-Z_]\w*$/.test(name) && !specialWords.hasOwnProperty(name.toLowerCase());
 
         const renameVariableInCode = (oldName, newName) => {
+            // Note: oldName comes from the UI, so it already has the correct Case (e.g., "FoodPrice")
             const lowerNewName = newName.toLowerCase();
             const lowerOldName = oldName.toLowerCase();
 
@@ -843,9 +875,15 @@
                 showMessage(`"${newName}" is not a valid variable name.`);
                 return;
             }
-            if (lowerNewName === lowerOldName) return;
+            if (lowerNewName === lowerOldName && oldName !== newName) {
+                // Special case: Changing case only (e.g., "foodprice" -> "FoodPrice")
+                // We allow this without merging checks.
+            } else if (lowerNewName === lowerOldName) {
+                return; // No change
+            }
 
             const performRename = () => {
+                // Regex: Find the old name (case-insensitive) to replace it everywhere
                 const codeRegex = new RegExp(`\\b${oldName}\\b`, 'gi');
                 const commentRegex = new RegExp(`\\{${oldName}\\}`, 'gi'); 
                 
@@ -870,7 +908,9 @@
                 if (confirmModal.classList.contains('flex')) { confirmModal.classList.add('hidden'); }
             };
 
-            if (variables.hasOwnProperty(lowerNewName)) {
+            // Check if new name conflicts with an EXISTING different variable
+            // (Only if we are actually changing the name, not just the case)
+            if (lowerNewName !== lowerOldName && variables.hasOwnProperty(lowerNewName)) {
                 $('#confirm-title').textContent = 'Merge Variables?';
                 $('#confirm-text').textContent = `A variable named "${newName}" already exists. Do you want to merge these? This cannot be undone.`;
                 $('#confirm-ok').className = 'bg-yellow-600 text-white font-medium py-2 px-4 rounded-lg hover:bg-yellow-700';

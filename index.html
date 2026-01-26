@@ -212,7 +212,7 @@
     </div>
 
     <div id="variables-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black bg-opacity-70 p-4">
-        <div class="bg-gray-800 rounded-xl p-6 w-full max-w-2xl shadow-2xl border border-gray-700 flex flex-col max-h-[80vh]">
+        <div class="bg-gray-800 rounded-xl p-6 w-full max-w-5xl shadow-2xl border border-gray-700 flex flex-col max-h-[80vh]">
             <h4 class="text-2xl font-bold mb-4 text-white">Current Variables</h4>
             <div id="variables-content" class="flex-1 overflow-y-auto text-gray-300 space-y-2 pr-4 font-mono"></div>
             <div class="flex justify-end mt-6"><button id="variables-close-button" class="bg-cyan-600 text-white font-medium py-2 px-6 rounded-lg hover:bg-cyan-700">Close</button></div>
@@ -925,13 +925,20 @@
 
         const populateVariablesModal = () => {
             if (orderedVariables.size === 0) { variablesContent.innerHTML = `<div class="text-gray-400">No variables have been defined yet.</div>`; return; }
-            let contentHTML = '<div class="grid grid-cols-[1fr,auto,1fr,2fr] gap-x-4 items-center border-b border-gray-600 pb-2 mb-2 text-sm text-gray-400"><h5>Variable</h5><div></div><h5 class="text-center">Final Value</h5><h5 class="text-right">Comment</h5></div>';
+            
+            // CHANGED: Grid columns from [1fr,auto,1fr,2fr] to [2fr,auto,1fr,3fr]
+            // This gives 2x space to the Name and 3x space to the Comment.
+            const gridClass = "grid grid-cols-[2fr,auto,1fr,3fr] gap-x-6 items-center border-b border-gray-600 pb-2 mb-2 text-sm text-gray-400";
+            const rowClass = "variable-row grid grid-cols-[2fr,auto,1fr,3fr] gap-x-6 items-start py-2 border-b border-gray-700/50";
+            
+            let contentHTML = `<div class="${gridClass}"><h5>Variable</h5><div></div><h5 class="text-center">Final Value</h5><h5 class="text-right">Comment</h5></div>`;
+            
             for (const [name, data] of orderedVariables.entries()) {
                 const formattedValue = formatResult(data.value);
                 const commentText = data.comment ? `// ${data.comment}` : '';
                 contentHTML += `
-                    <div class="variable-row grid grid-cols-[1fr,auto,1fr,2fr] gap-x-4 items-start py-1 border-b border-gray-700/50" data-line-index="${data.line}" data-var-name="${name}">
-                        <span class="variable-name-cell variable-new font-bold break-all flex items-center">${name}</span>
+                    <div class="${rowClass}" data-line-index="${data.line}" data-var-name="${name}">
+                        <span class="variable-name-cell variable-new font-bold whitespace-nowrap overflow-hidden text-ellipsis flex items-center">${name}</span>
                         <button class="rename-btn" data-var-name="${name}" title="Rename variable">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M17.414 2.586a2 2 0 00-2.828 0L7 10.172V13h2.828l7.586-7.586a2 2 0 000-2.828z" /><path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4a1 1 0 010 2H4v10h10v-4a1 1 0 112 0v4a2 2 0 01-2 2H4a2 2 0 01-2-2V6z" clip-rule="evenodd" /></svg>
                         </button>
